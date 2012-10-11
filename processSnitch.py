@@ -1,0 +1,81 @@
+#!/usr/bin/env python
+""" processSnitch.py prints a log of the run-time changes of a process.
+
+Log entries of the form:
+    [TS] ProcessName: pid: <Message>
+
+Message = ['started', 'died']
+"""
+import sys, optparse, logging, os.path, subprocess, time
+
+
+def parseCmdLine():
+    """
+    manage cli invocation
+    """
+    usage = '%prog [-p|--process <process>] [-l|--log <log-file>]'
+    version = '%prog v0.1'
+    description = __doc__
+    parser = optparse.OptionParser( usage = usage,
+                           version = version,
+                           description = description )
+    parser.add_option('-p', '--process', dest='process', metavar='<process>', default='kdriver',
+                      help='The process to snitch on.')
+    parser.add_option('-l', '--log', dest='log', metavar='<log-file>', default='',
+                      help='The file to write log messages to.')
+    parser.add_option('-i', '--poll-interval', dest='interval', metavar='<poll-interval>',
+                      default=0.2, type=int, help='Time to wait between polls.')
+    return parser.parse_args()
+
+def calculateLogFilename(opts):
+    if opts.log != '':
+        return opts.log
+    _, head = os.path.split(opts.process)
+    return '%s.log' % head
+
+def setupLogging(opts):
+    logging.basicConfig(level=logging.INFO, filename=opts.log,
+                        format='%(asctime)s: %(message)s',
+                        datefmt='%y%m%d-%H%M%S')
+    return logging.getLogger(opts.process)
+
+class Snitch:
+    def __init__(self, opts, log):
+        self.process = opts.process
+        self.log = log
+        self.interval = opts.interval
+        self.state = None
+
+    def getProcessState(self):
+        proc = subprocess.Popen('pidof %s' % self.process, shell=True,
+                                stdout=subprocess.PIPE)
+        stdout, _ = proc.communicate()
+        if not proc.wait():
+            try:
+                stdout = int(stdout)
+            except:
+                stdout = None
+            return stdout
+
+    def runLoop(self):
+        self.state = self.getProcessState()
+        self.log.info(self.state)
+        while True:
+            time.sleep(self.interval)
+            newState = self.getProcessState()
+            if self.state != newState:
+                self.state = newState
+                self.log.info(newState)
+
+def main():
+    opts, args = parseCmdLine()
+    opts.log = calculateLogFilename(opts)
+    logFile = open(opts.log, 'w')
+    log = setupLogging(opts)
+    log.info('Starting to Snitch on %s' % opts.process)
+    snitch = Snitch(opts, log)
+    snitch.runLoop()
+    return 0
+
+if __name__ == '__main__':
+    sys.exit(main())

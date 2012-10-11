@@ -1,0 +1,13 @@
+#!/bin/sh
+
+# couple this X session with that of the remote PC
+
+REMOTE="192.168.0.10"
+X2X="x2x -to :0.0"
+DIRECTION="-east"
+
+USER="csand"
+
+#ssh -X csand@192.168.0.100 "x2x -to :0 -west"
+
+ssh -XC ${USER}@${REMOTE} "${X2X} ${DIRECTION}"

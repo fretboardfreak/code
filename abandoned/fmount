@@ -1,0 +1,7 @@
+#!/bin/bash
+
+echo Mounting ${1} to ${2}
+
+sudo mount -t vfat -o umask=002,uid=`id -u`,gid=`id -g` ${1} ${2}
+
+echo Mounting Finished

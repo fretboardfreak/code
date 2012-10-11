@@ -1,0 +1,12 @@
+#!/bin/bash
+
+if [ $# -eq 1 ] 
+    then
+    find . -name "*.py" | xargs grep -n $1
+elif [ $# -eq 2 ] 
+    then
+    find $2 -name "*.py" | xargs grep -n $1
+else
+    echo "Usage: pygrep pattern [dir-to-search-in]"
+    exit 1
+fi

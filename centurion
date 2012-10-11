@@ -1,0 +1,84 @@
+#!/usr/bin/env python
+'''!
+'''
+
+import time, sys, os, subprocess, re
+from optparse import OptionParser
+
+def parseCmdLine():
+    '''!
+    manage cli invocation
+    '''
+    usage = '%prog'
+    version = '%prog v0.0'
+    description = __doc__
+    parser = OptionParser( usage = usage,
+                           version = version,
+                           description = description )
+    parser.add_option("-n", "--number",
+                      dest="number", default=100,
+                      help="number of drinks to the end")
+    parser.add_option("-T", "--period",
+                      dest="period", default=60 )
+    parser.add_option("-p", "--player", action='append',
+                      dest="player", default = [] )
+
+    return parser.parse_args()
+
+class Player:
+    def __init__( self, name = '', count = 0 ):
+        self.name = name
+        self.count = count
+
+    def drankOne( self ):
+        self.count += 1
+
+    def __str__( self ):
+        return self.name
+
+def main():
+    '''!
+    '''
+    ( opts, args ) = parseCmdLine()
+    count = 0
+    players = []
+    for i in opts.player:
+        players.append( Player(name = i) )
+    for i in players:
+        print ('%s, ' % i.name ),
+    print 'will be drinking %s shots' % opts.number
+    print 'You will drink every %s seconds' % opts.period
+    print 'good luck'
+    while count < int(opts.number):
+        print '%s drinks left!' % (int(opts.number)-count)
+        count += 1
+        #print 'Drink #%s' % count
+        zenity = ['zenity', '--list', '--checklist', '--text',
+                  '"Drink #%s"' %count,  '--column',
+                  '"ack"', '--column', '"NAME"']
+        for i in players:
+            zenity.append('TRUE')
+            zenity.append(i.name)
+        p = subprocess.Popen(zenity, stdout=subprocess.PIPE)
+        p.wait()
+        ret, err = p.communicate()
+        try:
+            drank = ret.split('|')
+        except:
+            drank = [ ret ]
+        for e in drank:
+            for i in players:
+                if e.find(i.name) == 0:
+                    i.drankOne()
+
+        time.sleep(float(opts.period))
+    for i in players:
+        print "%s drank %s" % ( i.name, i.count )
+    return 0
+
+if __name__ == '__main__':
+    try:
+        sys.exit( main() )
+    except KeyboardInterrupt:
+        print 'Interrupted by User.'
+        sys.exit( 1 )

@@ -1,0 +1,183 @@
+#!/usr/bin/env python
+'''
+HTML NavBar Generator:
+
+Generates an html list with each bullet as a link to the files given
+on the command line.
+<div id="navcontainer">
+<ul id="navlist">
+<li><a href="index.html">Home</a></li>
+<li id="active"><a href="notes.html" id="current">Notes</a></li>
+</ul>
+</div>
+'''
+# navbar <topDir> <file1> <file2> ...
+
+#remove non-existent files in arg
+#for file in arg
+#  create a list element for all files making only the current one active
+#  open file
+#  find "<body>" tag
+#  write '\n<div id = "navcontainer">\n<ul id="navlist">'
+#  for element in list
+#    write '\n' + element
+#  write "\n</ul>\n</div>\n"
+#  close file
+
+import sys, optparse, os.path, subprocess, os, pprint
+
+DEBUG = False
+
+class NavBarException(Exception):
+    pass
+
+
+class NavBar:
+    def __init__(self):
+        self.elements = []
+
+    def add_element(self, element):
+        if not isinstance(element, Element):
+            raise NavBarException('NavBar expects an element to be '
+                                  'of class Element')
+        self.elements.append(element)
+
+    def __str__(self):
+        retVal = '<div id="navcontainer">\n<ul id="navlist">\n'
+        for element in self.elements:
+            retVal += element.__str__()
+        retVal += '</ul>\n</div>\n'
+        return retVal
+
+
+class Element:
+    def __init__(self, path, title, active=False):
+        self.path = path
+        self.title = title
+        self.active = active
+
+    def __str__(self):
+        rep = '<li><a href="%s">%s</a></li>\n' % (self.path, self.title)
+        if self.active:
+            rep = ('<li id="active"><a href="%s" id="current">%s</a></li>\n' %
+                   (self.path, self.title))
+        return rep
+
+def runFind(pattern, topDir):
+    cmd = ('/usr/bin/find -L %s -name "%s"' % (topDir, pattern)).split(' ')
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True, cwd=topDir)
+    (out, err) = proc.communicate()
+    if proc.wait():
+        raise Exception('Unable to do recursive file discovery')
+    return out.split('\n')    
+
+def recursiveDiscovery(topDir):
+    out = runFind('*.html', topDir) #out.split('\n')
+    for f in out[:]:
+        _, filename = os.path.split(f)
+        if (f == '.' or f == '' or 
+            not (filename.find('.htm') >= 0 or filename.find('.php') >= 0)):
+            out.remove(f)
+            continue
+        real = os.path.realpath(os.path.join(topDir, f))
+        out.remove(f)
+        out.append(real)
+    return out
+
+def generateNavBar(theFile, navDests):
+    navBar = NavBar()
+    filePath, fileHead = os.path.split(theFile)
+    for dest, title in navDests:
+        destPath, destHead = os.path.split(dest)
+        relPath = os.path.relpath(dest, filePath)
+        if DEBUG:
+            print ('file = %s\n  dest = %s\n  relpath = %s' %
+                   (theFile, dest, relPath))
+        active = False
+        if destPath == filePath and fileHead == destHead:
+            active = True
+        navBar.add_element(Element(path=relPath,
+                                   title=title,
+                                   active=active))
+    return navBar
+
+def writeNavBar(f, navBar):
+    outfilename = f + '.tmp'
+    #open file f for reading
+    inFile = open(f, 'r')
+    #open file tmp for writing
+    outFile = open(outfilename, 'w')
+    writtenNavBar = False
+    line = inFile.readline()
+    while line != '':
+        outFile.write(line)
+        if line.find('<body>') > -1 and not writtenNavBar:
+            outFile.write(navBar.__str__())
+            writtenNavBar = True
+        line = inFile.readline()
+    inFile.close()
+    outFile.flush()
+    outFile.close()
+    #mv tmp f
+    cmd = '/bin/mv -f %s %s' % (outfilename, f)
+    mv = subprocess.Popen(cmd, shell=True)
+    retVal = mv.wait()
+    return retVal
+
+def parseCmdLine():
+  '''
+  manage cli invocation
+  '''
+  usage = '%prog [-v/--verbose] <html_files>'
+  version = '%prog v0.0'
+  description = __doc__
+  parser = optparse.OptionParser(usage = usage, 
+                                 version = version,
+                                 description = description)
+  parser.add_option("--verbose", "-v", action='store_true', default=False)
+  return parser.parse_args()
+
+def main():
+    opts, args = parseCmdLine()
+
+    if len(args) < 2:
+        raise NavBarException('Need to have a directory and at least one HTML '
+                              'file to create a NavBar.')
+    
+    topDir = args.pop(0)
+    if not os.path.exists(topDir):
+        raise NavBarException('The directory %s does not appear to exist' %
+                              topdir)
+    os.chdir(topDir)
+
+    navDests = list()
+
+    evens = args[1::2] + [None]
+    odds = args[::2]
+    navDests = zip(odds, evens)
+
+    for fname, title in navDests:
+        if not os.path.exists(topDir) and fname.find('.htm') > 0:
+            raise NavBarException('The file %s does not ' % topDir +
+                                  'appear to exist')
+        fname = os.path.realpath(fname)
+
+    htmlFiles = recursiveDiscovery(topDir)
+
+    for f in htmlFiles:
+        navBar = generateNavBar(f, navDests)
+        if writeNavBar(f, navBar):
+            raise NavBarException('Failed to write NavBar for %s' % f)
+
+    return 0
+
+
+if __name__ == '__main__':
+    try:
+        sys.exit( main() )
+    except KeyboardInterrupt:
+        print 'Interrupted by User.'
+        sys.exit( 1 )
+    except NavBarException, e:
+        print e
+        sys.exit(1)

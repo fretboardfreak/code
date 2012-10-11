@@ -1,0 +1,35 @@
+#!/bin/bash
+
+function usage () {
+    echo "Usage: alpha-vnc [-h|-s|-v]"
+    echo "    -h : print this help message"
+    echo "    -v : view the vnc server on alpha [Default]"
+    echo "    -s : start x11vnc server on alpha"
+}
+
+function startvnc () {
+    ssh 192.168.0.100 -l csand "/usr/bin/x11vnc -display :0 -ncache 10 -ncache_cr "
+}
+
+function view () {
+    vncviewer 192.168.0.100:0
+}
+
+if [[ $# -eq 0 ]]; then # Default
+    view
+elif [[ $# -eq 1 ]]; then
+    if [[ $1 = "-h" ]]; then
+        usage
+    elif [[ $1 = "-s" ]]; then
+        startvnc
+    elif [[ $1 = "-v" ]]; then
+        view
+    else
+        usage
+    fi
+else
+    usage
+fi
+
+
+

@@ -1,0 +1,42 @@
+#!/bin/bash
+
+REPO=/home/csand/stuff
+PUBLISH=$REPO/scripts/publish
+NAVBAR=$REPO/scripts/navbar
+NOTES=$REPO/notes
+HTML=$NOTES/html 
+FILES=$HTML/files
+PRIVATETAR=$NOTES/private.tgz
+PRIVATEDEST=curtsan2@curtissand.com:/home/curtsan2/www/private/
+FILELISTINDEX=$FILES/index.php
+
+echo "Removing old data" && rm -rf $HTML/ $PRIVATETAR
+
+$PUBLISH -v $NOTES/ #publish markdown to html
+
+echo "Creating NavBar" # insert navbar into html files
+$NAVBAR $HTML \
+    $HTML/index.html Home \
+    $HTML/notes.html Notes \
+    $HTML/compe.html CeClub \
+    $HTML/programming.html Programming \
+    $HTML/zorg.html "Zorge Empire" \
+    $HTML/school/ School \
+    $FILELISTINDEX Files
+
+echo "Copying extra files to $FILES/"
+cp -r $FILELISTINDEX $HTML/school/
+cp -r $REPO/reference $FILES/ && cp $FILELISTINDEX $FILES/reference/
+cp -r $REPO/resume $FILES/    && cp $FILELISTINDEX $FILES/resume/
+cp -r $REPO/scripts $FILES/   && cp $FILELISTINDEX $FILES/scripts/
+cp -r $REPO/templates $FILES/ && cp $FILELISTINDEX $FILES/templates/
+
+echo "Creating private.tgz tarball: "
+PWD=`pwd`
+cd $HTML
+tar czf private.tgz * #$PRIVATETAR $HTML/*
+mv private.tgz $NOTES
+cd $PWD
+
+echo "Transferring private.tgz to curtissand.com" && scp $PRIVATETAR $PRIVATEDEST
+echo "Cleaning up working files" && rm -r $HTML $PRIVATETAR

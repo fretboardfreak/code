@@ -1,0 +1,63 @@
+#!/bin/bash
+
+# Print Usage
+function usage () {
+    echo "Usage: dtach [name] [cmd]"
+    echo "    -h : print this help message"
+}
+
+# Script Scope Variables
+SESSIONDIR="/tmp/dtach/"
+
+# Function Definitions
+function makeDir () {
+    mkdir -p /tmp/dtach/
+}
+
+function listDir () {
+    ls -1 ${SESSIONDIR}
+}
+
+function dt () {
+    dtach ${mode} ${SESSIONDIR}${name} ${command}
+}
+
+function create () {
+    mode="-c"
+    dt
+}
+
+function attach () {
+    mode="-a"
+    dt
+    if [[ $? -ne 0 ]]; then
+        command="bash"
+        create
+    fi
+}
+
+
+# CMD Line Parsing and the body of the script
+
+makeDir
+
+if [[ $# -eq 0 ]]; then
+    listDir
+elif [[ $# -eq 1 ]]; then
+    if [[ $1 = "-h" ]]; then
+        usage
+        exit
+    elif [[ $1 = "--help" ]]; then
+        usage
+        exit
+    fi
+    name="${1}"
+    command=""
+    attach
+elif [[ $# -eq 2 ]]; then
+    name="${1}"
+    command="${2}"
+    create
+else
+    usage
+fi

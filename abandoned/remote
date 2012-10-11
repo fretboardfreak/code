@@ -1,0 +1,21 @@
+#!/bin/bash
+
+#Run a command on a remote machine
+
+# IMPORTANT :: Until this is re-written in python the command argument needs
+#   to be surrounded like this "\"some command stuff\""
+
+function usage () {
+    echo "# IMPORTANT :: Until this is re-written in python the command argument needs"
+    echo "#   to be surrounded like this \"\\\"some command stuff\\\"\""
+    echo "remote : run a bash command on a remote machine"
+    echo "Usage > remote \"[ipAddress]\" \"\\\"[command]\\\"\""
+    echo "    -h : print this help message"
+}
+
+
+if [[ $# -eq 2 ]]; then
+    command="ssh 192.168.0.100 -l csand \"x11vnc -display :0 &\" && vncviewer 192.168.0.100:0"
+else
+    usage
+fi

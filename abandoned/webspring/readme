@@ -1,0 +1,17 @@
+Written by Curtis Sand, Copyright 2011.
+
+# Webspring
+The wellspring of my wesbsite is...
+
+## Description:
+Webspring is a group of python packages that provide a quick and simple system
+for generating a website out of simple python scripts and markdown content
+files.  The system includes a python library for generating html code in a
+quick and simple manner.
+
+## Testing:
+Unit tests using 2.7's unittest and mock modules.
+
+## Todo:
+* PandocMutagen.do()
+* Unit Tests for pandocMutagen

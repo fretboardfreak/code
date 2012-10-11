@@ -1,0 +1,177 @@
+2012-03-08 13:48:40,429: fmanager.cgi: INFO: ****************************************
+2012-03-08 13:48:40,429: fileManSession: INFO: Starting session.
+2012-03-08 13:48:40,429: fileManSession: INFO: Path has been set to: .
+2012-03-08 13:48:40,578: fileManSession: INFO: Initializing DirectoryViewInterface
+2012-03-08 13:48:40,578: DirViewInterface: INFO: running interface
+2012-03-08 13:52:43,643: fmanager.cgi: INFO: ****************************************
+2012-03-08 13:52:43,644: fileManSession: INFO: Starting session.
+2012-03-08 13:52:43,644: fileManSession: INFO: Path has been set to: .
+2012-03-08 13:52:43,644: fileManSession: INFO: Initializing DirectoryViewInterface
+2012-03-08 13:52:43,644: DirViewInterface: INFO: running interface
+2012-03-08 13:52:47,541: fmanager.cgi: INFO: ****************************************
+2012-03-08 13:52:47,542: fileManSession: INFO: Starting session.
+2012-03-08 13:52:47,542: fileManSession: INFO: Path has been set to: .
+2012-03-08 13:52:47,542: fileManSession: INFO: Initializing DirectoryViewInterface
+2012-03-08 13:52:47,543: DirViewInterface: INFO: running interface
+2012-03-08 13:52:50,568: fmanager.cgi: INFO: ****************************************
+2012-03-08 13:52:50,569: fileManSession: INFO: Starting session.
+2012-03-08 13:52:50,569: fileManSession: INFO: Path has been set to: ./files
+2012-03-08 13:52:50,570: fileManSession: INFO: Initializing DirectoryViewInterface
+2012-03-08 13:52:50,570: DirViewInterface: INFO: running interface
+2012-03-08 13:52:52,638: fmanager.cgi: INFO: ****************************************
+2012-03-08 13:52:52,639: fileManSession: INFO: Starting session.
+2012-03-08 13:52:52,639: fileManSession: INFO: Path has been set to: ./files/mock
+2012-03-08 13:52:52,640: fileManSession: INFO: Initializing DirectoryViewInterface
+2012-03-08 13:52:52,640: DirViewInterface: INFO: running interface
+2012-03-08 13:52:54,451: fmanager.cgi: INFO: ****************************************
+2012-03-08 13:52:54,452: fileManSession: INFO: Starting session.
+2012-03-08 13:52:54,452: fileManSession: INFO: Path has been set to: .
+2012-03-08 13:52:54,452: fileManSession: INFO: Initializing DirectoryViewInterface
+2012-03-08 13:52:54,453: DirViewInterface: INFO: running interface
+2012-03-08 13:55:52,298: fmanager.cgi: INFO: ****************************************
+2012-03-08 13:55:52,299: fileManSession: INFO: Starting session.
+2012-03-08 13:55:52,299: fileManSession: INFO: Path has been set to: .
+2012-03-08 13:55:52,299: fileManSession: INFO: Initializing DirectoryViewInterface
+2012-03-08 13:55:52,299: DirViewInterface: INFO: running interface
+2012-03-08 13:55:54,243: fmanager.cgi: INFO: ****************************************
+2012-03-08 13:55:54,243: fileManSession: INFO: Starting session.
+2012-03-08 13:55:54,244: fileManSession: INFO: Path has been set to: ./cgi
+2012-03-08 13:55:54,244: fileManSession: INFO: Initializing DirectoryViewInterface
+2012-03-08 13:55:54,244: DirViewInterface: INFO: running interface
+2012-03-08 13:55:58,490: fmanager.cgi: INFO: ****************************************
+2012-03-08 13:55:58,492: fileManSession: INFO: Starting session.
+2012-03-08 13:55:58,492: fileManSession: INFO: Path has been set to: ./cgi/notes
+2012-03-08 13:55:58,492: fileManSession: INFO: Initializing DirectoryViewInterface
+2012-03-08 13:55:58,493: DirViewInterface: INFO: running interface
+2012-03-08 13:56:00,907: fmanager.cgi: INFO: ****************************************
+2012-03-08 13:56:00,908: fileManSession: INFO: Starting session.
+2012-03-08 13:56:00,908: fileManSession: INFO: Path has been set to: ./cgi/notes/index.cgi
+2012-03-08 13:56:00,908: fileManSession: INFO: Initializing FileViewInterface
+2012-03-08 13:56:00,909: FileViewInterface: INFO: running FileViewInterface
+2012-03-08 13:56:15,142: fmanager.cgi: INFO: ****************************************
+2012-03-08 13:56:15,142: fileManSession: INFO: Starting session.
+2012-03-08 13:56:15,143: fileManSession: INFO: Path has been set to: .
+2012-03-08 13:56:15,143: fileManSession: INFO: Initializing DirectoryViewInterface
+2012-03-08 13:56:15,143: DirViewInterface: INFO: running interface
+2012-03-08 13:56:18,954: fmanager.cgi: INFO: ****************************************
+2012-03-08 13:56:18,955: fileManSession: INFO: Starting session.
+2012-03-08 13:56:18,955: fileManSession: INFO: Path has been set to: ./files
+2012-03-08 13:56:18,956: fileManSession: INFO: Initializing DirectoryViewInterface
+2012-03-08 13:56:18,956: DirViewInterface: INFO: running interface
+2012-03-08 13:56:21,103: fmanager.cgi: INFO: ****************************************
+2012-03-08 13:56:21,104: fileManSession: INFO: Starting session.
+2012-03-08 13:56:21,105: fileManSession: INFO: Path has been set to: ./files/mock
+2012-03-08 13:56:21,105: fileManSession: INFO: Initializing DirectoryViewInterface
+2012-03-08 13:56:21,105: DirViewInterface: INFO: running interface
+2012-03-08 13:56:22,134: fmanager.cgi: INFO: ****************************************
+2012-03-08 13:56:22,134: fileManSession: INFO: Starting session.
+2012-03-08 13:56:22,135: fileManSession: INFO: Path has been set to: ./files/mock/mock.py
+2012-03-08 13:56:22,135: fileManSession: INFO: Initializing FileViewInterface
+2012-03-08 13:56:22,135: FileViewInterface: INFO: running FileViewInterface
+2012-03-08 14:02:02,198: fmanager.cgi: INFO: ****************************************
+2012-03-08 14:02:02,199: fileManSession: INFO: Starting session.
+2012-03-08 14:02:02,199: fileManSession: INFO: Path has been set to: ./files/mock/mock.py
+2012-03-08 14:02:02,213: fileManSession: INFO: Initializing FileViewInterface
+2012-03-08 14:02:02,213: FileViewInterface: INFO: running FileViewInterface
+2012-03-08 14:02:05,140: fmanager.cgi: INFO: ****************************************
+2012-03-08 14:02:05,141: fileManSession: INFO: Starting session.
+2012-03-08 14:02:05,141: fileManSession: INFO: Path has been set to: .
+2012-03-08 14:02:05,141: fileManSession: INFO: Initializing DirectoryViewInterface
+2012-03-08 14:02:05,141: DirViewInterface: INFO: running interface
+2012-03-08 14:03:09,144: fmanager.cgi: INFO: ****************************************
+2012-03-08 14:03:09,145: fileManSession: INFO: Starting session.
+2012-03-08 14:03:09,145: fileManSession: INFO: Path has been set to: .
+2012-03-08 14:03:09,145: fileManSession: INFO: Initializing DirectoryViewInterface
+2012-03-08 14:03:09,145: DirViewInterface: INFO: running interface
+2012-03-16 13:14:31,504: fmanager.cgi: INFO: ****************************************
+2012-03-16 13:14:31,505: fileManSession: INFO: Starting session.
+2012-03-16 13:14:31,505: fileManSession: INFO: Path has been set to: .
+2012-03-16 13:14:31,505: fileManSession: INFO: Initializing DirectoryViewInterface
+2012-03-16 13:14:31,506: DirViewInterface: INFO: running interface
+2012-03-16 13:21:21,085: fmanager.cgi: INFO: ****************************************
+2012-03-16 13:21:21,085: fileManSession: INFO: Starting session.
+2012-03-16 13:21:21,086: fileManSession: INFO: Path has been set to: .
+2012-03-16 13:21:21,086: fileManSession: INFO: Initializing DirectoryViewInterface
+2012-03-16 13:21:21,086: DirViewInterface: INFO: running interface
+2012-03-16 13:21:29,233: fmanager.cgi: INFO: ****************************************
+2012-03-16 13:21:29,234: fileManSession: INFO: Starting session.
+2012-03-16 13:21:29,234: fileManSession: INFO: Path has been set to: ./files
+2012-03-16 13:21:29,235: fileManSession: INFO: Initializing DirectoryViewInterface
+2012-03-16 13:21:29,235: DirViewInterface: INFO: running interface
+2012-03-16 13:21:38,033: fmanager.cgi: INFO: ****************************************
+2012-03-16 13:21:38,033: fileManSession: INFO: Starting session.
+2012-03-16 13:21:38,034: fileManSession: ERROR: The provided path points outside of the allowed content directory: path=../files, normpath=/home/sandc3/files
+2012-03-16 13:21:41,374: fmanager.cgi: INFO: ****************************************
+2012-03-16 13:21:41,374: fileManSession: INFO: Starting session.
+2012-03-16 13:21:41,375: fileManSession: ERROR: The provided path points outside of the allowed content directory: path=../f, normpath=/home/sandc3/f
+2012-03-16 13:21:41,771: fmanager.cgi: INFO: ****************************************
+2012-03-16 13:21:41,772: fileManSession: INFO: Starting session.
+2012-03-16 13:21:41,772: fileManSession: ERROR: The provided path points outside of the allowed content directory: path=../, normpath=/home/sandc3
+2012-03-16 13:21:42,992: fmanager.cgi: INFO: ****************************************
+2012-03-16 13:21:42,993: fileManSession: INFO: Starting session.
+2012-03-16 13:21:42,993: fileManSession: ERROR: The provided path points outside of the allowed content directory: path=../content, normpath=/home/sandc3/content
+2012-03-16 13:22:16,064: fmanager.cgi: INFO: ****************************************
+2012-03-16 13:22:16,065: fileManSession: INFO: Starting session.
+2012-03-16 13:22:16,065: fileManSession: INFO: Path has been set to: ./content
+2012-03-16 13:22:16,066: fileManSession: INFO: Initializing FileViewInterface
+2012-03-16 13:22:16,066: FileViewInterface: INFO: running FileViewInterface
+2012-03-16 13:22:17,882: fmanager.cgi: INFO: ****************************************
+2012-03-16 13:22:17,883: fileManSession: INFO: Starting session.
+2012-03-16 13:22:17,883: fileManSession: INFO: Path has been set to: ./conten
+2012-03-16 13:22:17,884: fileManSession: INFO: Initializing FileViewInterface
+2012-03-16 13:22:17,884: FileViewInterface: INFO: running FileViewInterface
+2012-03-16 13:22:18,740: fmanager.cgi: INFO: ****************************************
+2012-03-16 13:22:18,741: fileManSession: INFO: Starting session.
+2012-03-16 13:22:18,741: fileManSession: ERROR: The provided path points outside of the allowed content directory: path=., normpath=/home/sandc3/public_html
+2012-03-16 13:22:23,425: fmanager.cgi: INFO: ****************************************
+2012-03-16 13:22:23,425: fileManSession: INFO: Starting session.
+2012-03-16 13:22:23,425: fileManSession: INFO: Path has been set to: .
+2012-03-16 13:22:23,426: fileManSession: INFO: Initializing DirectoryViewInterface
+2012-03-16 13:22:23,426: DirViewInterface: INFO: running interface
+2012-03-16 13:22:24,227: fmanager.cgi: INFO: ****************************************
+2012-03-16 13:22:24,228: fileManSession: INFO: Starting session.
+2012-03-16 13:22:24,228: fileManSession: INFO: Path has been set to: .
+2012-03-16 13:22:24,228: fileManSession: INFO: Initializing DirectoryViewInterface
+2012-03-16 13:22:24,228: DirViewInterface: INFO: running interface
+2012-03-16 13:22:24,760: fmanager.cgi: INFO: ****************************************
+2012-03-16 13:22:24,760: fileManSession: INFO: Starting session.
+2012-03-16 13:22:24,761: fileManSession: INFO: Path has been set to: .
+2012-03-16 13:22:24,761: fileManSession: INFO: Initializing DirectoryViewInterface
+2012-03-16 13:22:24,761: DirViewInterface: INFO: running interface
+2012-03-16 13:22:28,352: fmanager.cgi: INFO: ****************************************
+2012-03-16 13:22:28,353: fileManSession: INFO: Starting session.
+2012-03-16 13:22:28,353: fileManSession: INFO: Path has been set to: ./audits
+2012-03-16 13:22:28,353: fileManSession: INFO: Initializing DirectoryViewInterface
+2012-03-16 13:22:28,353: DirViewInterface: INFO: running interface
+2012-03-16 13:22:31,246: fmanager.cgi: INFO: ****************************************
+2012-03-16 13:22:31,247: fileManSession: INFO: Starting session.
+2012-03-16 13:22:31,247: fileManSession: INFO: Path has been set to: ./audit
+2012-03-16 13:22:31,254: fileManSession: INFO: Initializing FileViewInterface
+2012-03-16 13:22:31,254: FileViewInterface: INFO: running FileViewInterface
+2012-03-16 13:22:32,279: fmanager.cgi: INFO: ****************************************
+2012-03-16 13:22:32,279: fileManSession: INFO: Starting session.
+2012-03-16 13:22:32,280: fileManSession: ERROR: The provided path points outside of the allowed content directory: path=./, normpath=/home/sandc3/public_html
+2012-03-16 13:22:32,561: fmanager.cgi: INFO: ****************************************
+2012-03-16 13:22:32,562: fileManSession: INFO: Starting session.
+2012-03-16 13:22:32,562: fileManSession: ERROR: The provided path points outside of the allowed content directory: path=., normpath=/home/sandc3/public_html
+2012-03-16 13:22:33,610: fmanager.cgi: INFO: ****************************************
+2012-03-16 13:22:33,611: fileManSession: INFO: Starting session.
+2012-03-16 13:22:33,611: fileManSession: ERROR: The provided path points outside of the allowed content directory: path=../, normpath=/home/sandc3
+2012-03-16 13:25:34,043: fmanager.cgi: INFO: ****************************************
+2012-03-16 13:25:34,044: fileManSession: INFO: Starting session.
+2012-03-16 13:25:34,044: fileManSession: ERROR: The provided path points outside of the allowed content directory: path=.., normpath=/home/sandc3
+2012-03-16 13:25:34,364: fmanager.cgi: INFO: ****************************************
+2012-03-16 13:25:34,365: fileManSession: INFO: Starting session.
+2012-03-16 13:25:34,365: fileManSession: INFO: Path has been set to: .
+2012-03-16 13:25:34,365: fileManSession: INFO: Initializing DirectoryViewInterface
+2012-03-16 13:25:34,365: DirViewInterface: INFO: running interface
+2012-03-16 13:25:35,015: fmanager.cgi: INFO: ****************************************
+2012-03-16 13:25:35,016: fileManSession: INFO: Starting session.
+2012-03-16 13:25:35,016: fileManSession: INFO: Path has been set to: .
+2012-03-16 13:25:35,016: fileManSession: INFO: Initializing DirectoryViewInterface
+2012-03-16 13:25:35,016: DirViewInterface: INFO: running interface
+2012-03-16 13:25:35,469: fmanager.cgi: INFO: ****************************************
+2012-03-16 13:25:35,470: fileManSession: INFO: Starting session.
+2012-03-16 13:25:35,470: fileManSession: INFO: Path has been set to: .
+2012-03-16 13:25:35,471: fileManSession: INFO: Initializing DirectoryViewInterface
+2012-03-16 13:25:35,471: DirViewInterface: INFO: running interface

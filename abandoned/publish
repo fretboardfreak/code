@@ -1,0 +1,286 @@
+#!/usr/bin/env python
+VERSION = '0.1'
+
+import sys, optparse, os.path, subprocess, pprint, os
+
+# ------------------------------------------------------------
+
+DEBUG = True
+FILETYPES = {'md':'markdown', 'tex':'latex', 'html':'html'}
+
+class PublisherException(Exception):
+    pass
+
+class Publisher:
+    def __init__(self, topDir, outDir, fromSuffix, toSuffix,
+                 pandoc_args, verbose, toc_on_index, copy=[]):
+        self.topDir = topDir
+        self.outDir = outDir
+        self.fromSuffix = fromSuffix
+        self.toSuffix = toSuffix
+        self.pandoc_args = pandoc_args
+        self.verbose = verbose
+        self.copy = copy
+        self.toc_on_index = toc_on_index
+        self.pandoc = {}
+        self.css = None
+
+    @staticmethod
+    def recursiveDiscovery(topDir):
+        cmd = ('/usr/bin/find -L %s -name "*"' % topDir).split(' ')
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)
+        (out, err) = proc.communicate()
+        if proc.wait():
+            raise Exception('Unable to do recursive file discovery')
+        out = out.split('\n')
+        for f in out[:]:
+            if f == '.' or f == '':
+                out.remove(f)
+                continue
+            real = os.path.realpath(f)
+            out.remove(f)
+            out.append(real)
+        return out
+
+    def getFiles(self):
+        DEBUG = False
+        allFiles = Publisher.recursiveDiscovery(self.topDir)
+        for f in allFiles:
+            #if file is *.md put it and it's html output name in pandoc dict
+            path, head = os.path.split(f)
+            path = os.path.realpath(path)
+            if head.endswith('.md'):
+                htmlHead = head.replace('.md', '.html')
+                commonPrefix = os.path.commonprefix([self.topDir, path])
+                path = path.replace(commonPrefix, '')
+                self.pandoc[f] = os.path.join(self.outDir, path, htmlHead)
+            #if file is *.css put save to self.css
+            elif (head.endswith('.css') and
+                  not self.css and
+                  os.path.samefile(path, self.topDir)):
+                self.css = os.path.join(self.outDir, head)
+                self.copy.append(f)
+            #put all other files in copy dict
+            else:
+                self.copy.append(f)
+        if DEBUG:
+            print 'Pandoc: '
+            pprint.pprint(self.pandoc)
+            print 'css: '
+            pprint.pprint(self.css)
+            print 'copy: '
+            pprint.pprint(self.copy)
+
+    def runPandoc(self):
+        DEBUG = False
+        for f in self.pandoc.keys():
+            destPath, destHead = os.path.split(self.pandoc[f])
+            cssPath = os.path.relpath(self.css, destPath)
+            pandocArgs = self.pandoc_args[:]
+            if not self.toc_on_index and f.find('index.md') > 0:
+                pandocArgs.remove('--toc')
+            try:
+                cmd = ('pandoc --from %s --to %s %s -c %s -o %s %s' %
+                       (FILETYPES[self.fromSuffix], FILETYPES[self.toSuffix],
+                        ' '.join(pandocArgs), cssPath, self.pandoc[f], f))
+            except KeyError, e:
+                msg = 'Publish encountered a filetype that is unknown: %s' % e
+                raise PublisherException(msg)
+            if DEBUG: print '   command = %s' % cmd.split(' ')
+            if not os.path.exists(self.pandoc[f]):
+                subprocess.Popen(['mkdir', '-p', destPath]).wait()
+                subprocess.Popen(['touch', self.pandoc[f]]).wait()
+            pandoc = subprocess.Popen(cmd.split(' '), stdout=subprocess.PIPE,
+                                      stderr=subprocess.STDOUT)
+            out, err = pandoc.communicate()
+            pandoc.wait()
+            if out:
+                raise PublisherException(out)
+
+            
+    def copyFiles(self):
+        DEBUG=False
+        for f in self.copy:
+            path, head = os.path.split(f)
+            if path.startswith(self.outDir) or f == self.outDir:
+                continue
+            common = os.path.commonprefix([self.topDir, f])
+            new = f.replace(common, '')
+            new = os.path.join(self.outDir, new)
+            if os.path.isdir(f) and not os.path.exists(new):
+                cmd = 'cp -r %s %s' % (f, new)
+                if DEBUG: print 'cmd: %s\n' % (cmd)
+                subprocess.Popen(cmd.split(' ')).wait()
+            elif os.path.isfile(f):
+                newPath, newHead = os.path.split(new)
+                cmd = 'cp %s %s' % (f, newPath)
+                if not os.path.exists(new):
+                    if DEBUG: print 'cmd: %s\n' % (cmd)
+                    subprocess.Popen(cmd.split(' ')).wait()
+
+
+    def runTidy(self):
+        DEBUG = False
+        for f in self.pandoc.values():
+            cmd = ['tidy', '-imq', '-utf8', f]
+            if DEBUG: print cmd
+            tidy = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE)
+            out, err = tidy.communicate()
+            tidy.wait()
+
+    def run(self):
+        if self.verbose: print "   Starting to Publish Project"
+        self.getFiles()
+        if self.verbose: print "   Running pandoc on all Markdown Files"
+        self.runPandoc()
+        if self.verbose: print "   Using 'tidy' to clean pandoc's html output"
+        self.runTidy()
+        if self.verbose:
+            print ("   Copying non-markdown files from %s to %s" %
+                   (self.topDir, self.outDir))
+        self.copyFiles()
+
+def parseCmdLine():
+    '''
+    manage cli invocation
+    '''
+    usage = '%prog [options] <src_dir>'
+    version = '%prog v' + VERSION
+    description = __doc__
+    parser = optparse.OptionParser(usage = usage, 
+                                   version = version,
+                                   description = description)
+    parser.add_option('-d', '--dest', dest='dest', default='html',
+                      help='subdirectory of src_dir to put output files')
+    parser.add_option("-p", "--pandoc-args", dest="pandoc_args", action="append", 
+                      type="str", default=['--toc', '-s', '-S'])
+    parser.add_option("-t", "--toc-on-index", dest='toc_on_index', default=False,
+                      action='store_true')
+    parser.add_option('-v', '--verbose', dest='verbose', default=False,
+                      action='store_true')
+    parser.add_option('-c', '--copy', dest='copy', default=[], action='append',
+                      type='str')
+    (opts, args) = parser.parse_args()
+    if len( args ) < 1:
+        raise Exception('Program Requires 1 Parameter: %s' % usage)
+    if len( args ) > 1:
+        raise Exception(('Program can only deal with 1 top level ' + 
+                         'directory: %s' % usage))
+    return (opts, args)
+
+def main():
+    (opts, args) = parseCmdLine()
+
+    topDir = args[0]
+    if not os.path.exists(args[0]):
+      msg = '%s cannot be found' % args[0]
+      raise Exception(msg)
+    os.chdir(topDir)
+
+    outDir = os.path.join(topDir, opts.dest)
+
+    #check that all files in opt.copy exist and have meaningful paths
+    for f in opts.copy[:]:
+        real = os.path.realpath(f)
+        if not os.path.exists(real):
+            msg = "File %s not found" % real
+            raise PublisherException(msg)
+        opts.copy.remove(f)
+        opts.copy.append(real)
+
+    publisher = Publisher(topDir=topDir, outDir=outDir,
+                          fromSuffix='md', toSuffix='html',
+                          pandoc_args=opts.pandoc_args,
+                          verbose=opts.verbose,
+                          copy=opts.copy,
+                          toc_on_index=opts.toc_on_index)
+    publisher.run()
+
+
+# ------------------------------------------------------------
+
+if __name__ == '__main__':
+    try:
+        sys.exit( main() )
+    except KeyboardInterrupt:
+        print 'Interrupted by User.'
+        sys.exit( 1 )
+
+#def recursiveMDDiscovery(topDir, origSuffix):
+#    '''
+#    Use unix's find utility to search recursively for files with the
+#    pattern "'*.%s' % origSuffix"
+#    '''
+#    cmd = ['find', topDir, '-name', '*.%s' % origSuffix]
+#    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+#    (out, err) = proc.communicate()
+#    retval = proc.wait()
+#    if retval:
+#        raise Exception('Unable to use the find utility to discover files')
+#
+#    reffiles = out.split()
+#    checkedFiles = []
+#    for f in reffiles:
+#        if os.path.exists(f):
+#            checkedFiles.append(f)
+#    return checkedFiles
+#
+#def mainOrig():
+#    (opts, args) = parseCmdLine()
+#
+#    #initialize 
+#    if os.path.exists(args[0]):
+#        topDir = args[0]
+#        if not topDir.endswith('/'):
+#            topDir += '/'
+#    else:
+#        msg = '%s cannot be found' % args[0]
+#        raise Exception(msg)
+#
+#    outDir = os.path.join(topDir, opts.dest)
+#    print 'Output directory = "%s"' % outDir
+#
+#    if opts.orig in FILETYPES.keys():
+#        origSuffix = FILETYPES[opts.orig]
+#    else:
+#        origSuffix = opts.orig
+#
+#    if opts.to in FILETYPES.keys():
+#        toSuffix = FILETYPES[opts.orig]
+#    else:
+#        toSuffix = opts.to
+#
+#    inputFiles = []
+#    for dirs in args:
+#        inputFiles.extend(recursiveMDDiscovery(topDir, origSuffix))
+#
+#    files = {}
+#    for f in inputFiles:
+#        if f.startswith(topDir):
+#            tmp = os.path.join(outDir, f[len(topDir):]).split('.')
+#            files[f] = ''
+#            for i in tmp[:-1]:
+#                files[f] += i + '.'
+#            files[f] += toSuffix
+#        else:
+#            msg = 'File did not start with %s: skipping file.' % topDir
+#            raise Exception(msg)
+#
+#    
+#    for i in files.keys():
+#        (parent, fname) = os.path.split(files[i])
+#        mkdirCmd = ['mkdir', '-p', parent]
+#        pandocCmd = ['pandoc', '--from', opts.orig, '--to', toSuffix, 
+#                     '-o', files[i],'--toc', '-s', '-S', '-c', 
+#                     'pandoc.css', i]
+#        if i.find('index.md') >= 0:
+#            pandocCmd.pop(pandocCmd.index('--toc'))
+#        print 'Publishing %s to %s' % (i, files[i])
+#        if not os.path.exists( parent ):
+#          proc = subprocess.Popen(mkdirCmd)
+#          proc.wait()
+#        proc = subprocess.Popen(pandocCmd)
+#        proc.wait()
+#
+#    return 0

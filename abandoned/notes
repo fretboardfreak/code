@@ -1,0 +1,129 @@
+#!/usr/bin/env python
+"""
+This is the usage mesage
+"""
+import os, sys, commands, socket
+import logging
+
+try: # try python 2.7
+    import argparse
+
+    def parseArgs():
+        """Parse the command line arguments the python2.7+ way.
+        """
+        parser = argparse.ArgumentParser(description=__doc__)
+        parser.add_argument('-s', '--stuff', default='~/stuff',
+                help='Path to the stuff repository.', type=str)
+        parser.add_argument('-V', '--very-verbose', action='store_true', default=False,
+                help='Be very verbose when printing info to the terminal')
+        parser.add_argument('-v', '--verbose', action='store_true', default=False,
+                help='Be verbose when printing info to the terminal')
+        return parser.parse_args()
+except: # assume python 2.6 or lower
+    import optparse
+
+    def parseArgs():
+        """Parse the command line arguments the python2.6 way.
+        """
+        parser = optparse.OptionParser()
+        parser.add_option('-s', '--stuff', default='~/stuff/',
+                help='Path to the stuff repository.', type=str)
+        parser.add_option('-V', '--very-verbose', action='store_true', default=False,
+                help='Be very verbose when printing info to the terminal')
+        parser.add_option('-v', '--verbose', action='store_true', default=False,
+                help='Be verbose when printing info to the terminal')
+        opts, args = parser.parse_args()
+        return opts
+
+
+class SiteBuilderException(Exception):
+    pass
+
+class SiteBuilder:
+    def __init__(self, scriptArgs):
+        self.args = scriptArgs
+        self.setLogger()
+        self.stuffPath = self.getStuffPath(self.args.stuff)
+
+    def build(self):
+        """Do the job of building the site.
+        """
+        log = logging.getLogger('build')
+        try:
+            self.makeSite()
+            self.handleSite()
+        except SiteBuilderException, exc:
+            log.warning('Errors were encountered building the website')
+            return 1
+        finally:
+            return 0
+
+    def getStuffPath(self, argStuff):
+        """Get a path to the stuff repository.
+        """
+        log = logging.getLogger('getStuffPath')
+        if argStuff != '':
+            path = os.path.abspath(os.path.expanduser(argStuff))
+            log.info('stuffPath = %s' % path)
+            return path
+        msg = ('argStuff was "" and the code to guess the stuff path is ' +
+               'not written yet')
+        log.warning(msg)
+        raise SiteBuilderException(msg)
+
+    def makeSite(self):
+        """Go to <stuffPath>/notes/ and run "make"
+        """
+        log = logging.getLogger('makeSite')
+        notesPath = os.path.join(self.stuffPath, 'notes/')
+        command = "make --directory=%s" % notesPath
+        log.info('running command: %s' % command)
+        status, output = commands.getstatusoutput(command)
+        for line in output.split('\n'):
+            log.info(line)
+        log.info('command status was: %s' % status)
+        if status != 0:
+            msg = 'Problem making site'
+            log.warning(msg + ':\n%s' % output)
+            raise SiteBuilderException(msg)
+
+    def handleSite(self):
+        """Depending on self.stuffPath securely copy the built site to the webspace.
+        """
+        log = logging.getLogger('handleSite')
+        import socket
+        dests = {'sandc3':
+                'sandc3@hogwartsed.spgear.lab.emc.com:/home/sandc3/public_html/notes/'}
+        default = 'curtsan2@curtissand.com:~/www/prv/'
+        command = 'rsync -vharz %s %s' % (
+                os.path.join(self.stuffPath, 'notes/_build/html/*'),
+                dests.get(socket.gethostname(), default))
+        log.info('running command: %s' % command)
+        status, output = commands.getstatusoutput(command)
+        for line in output.split('\n'):
+            log.debug(line)
+        log.info('command status was: %s' % status)
+        if status != 0:
+            msg = 'Problem transferring site to webspace'
+            log.warning(msg + ":\n%s" % output)
+            raise SiteBuilderException(msg)
+
+    def setLogger(self):
+        """Configure the logger to the appropriate verbosity level.
+        """
+        if self.args.very_verbose:
+            level = logging.DEBUG
+        elif self.args.verbose:
+            level = logging.INFO
+        else:
+            level = logging.WARNING
+        logging.basicConfig(level=level,
+                            format='%(name)s: %(levelname)s: %(message)s')
+
+def main(scriptArgs):
+    args = parseArgs()
+    sb = SiteBuilder(args)
+    sb.build()
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv[1:]))

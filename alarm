@@ -1,0 +1,8 @@
+#!/bin/bash
+
+START="echo DISPLAY=:0 /usr/bin/zenity --info --text \""
+END="\""
+
+CMD=${START}${2}${END}
+
+$CMD | at ${1}

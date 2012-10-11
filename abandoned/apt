@@ -1,0 +1,62 @@
+#!/usr/bin/env python
+"""apt : Abstract and shorten common aptitude
+"""
+
+import sys, argparse, subprocess
+
+VERSION='apt wrapper: v1.0'
+
+def do(cmd):
+    return subprocess.call(cmd, shell=True)
+
+def errMsg(*args, **kwargs):
+    print('Please check your usage.  Try the flag "-h" or "--help" for ' +\
+          'more information')
+    sys.exit(1)
+
+def search(args):
+    return do('aptitude search %s' % ' '.join(args))
+
+def install(args):
+    return do('sudo aptitude install %s' % ' '.join(args))
+
+def remove(args):
+    return do('sudo aptitude remove %s' % ' '.join(args))
+
+def purge(args):
+    return do('sudo aptitude purge %s' % ' '.join(args))
+
+def update(args):
+    return do('sudo aptitude update %s' % ' '.join(args))
+
+def upgrade(args):
+    return do('sudo aptitude upgrade %s' % ' '.join(args))
+
+def updateUpgrade(args):
+    if not update([]):
+        return upgrade(['-y'])
+    return 1
+
+def parseArgs():
+    parser = argparse.ArgumentParser(prog='apt', version=VERSION,
+                description='Wrapper for common aptitude functionality.')
+    parser.add_argument('mode', metavar='mode', type=str, choices='sirpdgu',
+                        help='Mode to run aptitude in s=search, i=install, ' +\
+                             'r=remove, p=purge, d=update, g=upgrade, ' +\
+                             'u=updateUpgrade')
+    parser.add_argument('args', metavar='args', type=str, nargs='*', default='',
+                        help='Args to be passed directly to aptitude')
+    return parser.parse_args()
+
+def main():
+    opts = parseArgs()
+
+    actions = {'s': search, 'i': install, 'r': remove, 'p': purge,
+               'd': update, 'g': upgrade, 'u': updateUpgrade}
+    default = errMsg
+    doActions = lambda x, args: actions.get(x, default)(args)
+
+    return doActions(opts.mode, opts.args)
+
+if __name__ == '__main__':
+    sys.exit(main())
