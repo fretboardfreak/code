@@ -36,32 +36,54 @@ def indentParagraph(text, indent):
         indent = ' ' * indent
     return '\n'.join([indent + line for line in text.split('\n')])
 
-def continueLine(line, continuationPrefix, width=80):
-    """ Split line into multiple lines limited to given width (including
-        length of continuation prefix).
+def wrapText(line, width=80, continuationPrefix=None, splitWords=False,
+             wordSplitChar='-'):
+    """ Wrap text to the given width.
 
-        :param line: (str) The line to split
-        :param contiuationPrefix: (str) The prefix to use on wrapped lines
-        :param width: (int) The maximum width of the resulting block
+        :param line: (str) the line of text to wrap
+        :param width: (int) the width to wrap the line to
+        :param continuationPrefix: (str) the string to prefix continued lines with
+        :param splitWords: (bool) whether or not to split words to fill the line
+        :param wordSplitChar: (str) The string to use to indicate a word
+                              continues on another line.  wordSplitChar has no
+                              effect if splitWords is False.
 
-        >>> continueLine('-'*10, continuationPrefix='__', width=4)
-        '----\\n__--\\n__--\\n__--\\n'
-        >>> continueLine('-'*10, continuationPrefix='_ _ _', width=4)
-        Traceback (most recent call last):
-            ...
-        ValueError: Length of continuationPrefix must be less than width
+        >>> wrapText('foo bar', width=6)
+        'foo \\nbar \\n'
+        >>> wrapText('foo bar', width=6, continuationPrefix=' ')
+        'foo \\n bar \\n'
+        >>> wrapText('foo bar', width=6, splitWords=True)
+        'foo b-\\nar \\n'
+        >>> wrapText('foo bar', width=6, splitWords=True, wordSplitChar='>')
+        'foo b>\\nar \\n'
+        >>> wrapText('foo bar', width=5, splitWords=True)
+        'foo \\nbar \\n'
     """
-    contLen = len(continuationPrefix)
-    if contLen > width:
-        msg = "Length of continuationPrefix must be less than width"
-        raise ValueError(msg)
-    step = width - contLen
-    index = width
-    retVal = line[:index] + '\n'
-    while index < len(line) - step:
-        retVal += continuationPrefix + line[index:index+step] + '\n'
-        index = index + step
-    retVal += continuationPrefix + line[index:] + '\n'
+    if not continuationPrefix:
+        continuationPrefix = ''
+    words = line.split(' ')
+    retVal = ''
+    newLine = ''
+    for word in words:
+        if len(newLine) + len(word) <= width:
+            newLine += word + ' '
+            continue
+        elif len(newLine) + len(word) > width and not splitWords:
+            retVal += newLine + '\n'
+            newLine = continuationPrefix + word + ' '
+            continue
+        else: #split the word
+            remainingSpace = width - len(newLine)
+            if remainingSpace <= 1:
+                retVal += newLine + '\n'
+                newLine = continuationPrefix + word + ' '
+                continue
+            splitIndex = remainingSpace - len(wordSplitChar)
+            newLine += word[:splitIndex] + wordSplitChar
+            retVal += newLine + '\n'
+            newLine = continuationPrefix + word[splitIndex:] + ' '
+            continue
+    retVal += newLine + '\n'
     return retVal
 
 def _stripNewline(text):
