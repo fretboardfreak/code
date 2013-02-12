@@ -5,7 +5,7 @@ libRst
 
 This module is intended to provide compilation support for rst.  The intention
 is to keep the required libraries all in one place to provide a deployable,
-python 2.6 compatible, rst compiler.
+python 2.6/2.7 compatible, rst compiler.
 
 RST Constructs to be supported:
     - paragraph
@@ -16,10 +16,12 @@ RST Constructs to be supported:
 import docutils.core
 import sys, os.path
 
+
 def toHtml(text):
     """ Use Docutils to compile text into html. """
-    return docutils.core.publish_parts(
-            source=text, writer_name='html')['html_body']
+    return docutils.core.publish_parts(source=text,
+                                       writer_name='html')['html_body']
+
 
 def indentParagraph(text, indent):
     """ Indent some text by a number of spaces
@@ -35,6 +37,7 @@ def indentParagraph(text, indent):
     if isinstance(indent, int):
         indent = ' ' * indent
     return '\n'.join([indent + line for line in text.split('\n')])
+
 
 def wrapText(line, width=80, continuationPrefix=None, splitWords=False,
              wordSplitChar='-'):
@@ -86,15 +89,16 @@ def wrapText(line, width=80, continuationPrefix=None, splitWords=False,
     retVal += newLine + '\n'
     return retVal
 
-def _stripNewline(text):
-    """ Strip newlines from beginning and end of text.
+
+def _separateNewlines(text):
+    """ Separate newlines from beginning and end of text and return them in a tuple.
 
         :return: (tuple of str) the beginning newline value, stripped text,
                  ending newline value
 
-        >>> _stripNewline('\\nfoo\\n')
+        >>> _separateNewlines('\\nfoo\\n')
         ('\\n', 'foo', '\\n')
-        >>> _stripNewline('foo')
+        >>> _separateNewlines('foo')
         ('', 'foo', '')
     """
     start = ''
@@ -106,6 +110,7 @@ def _stripNewline(text):
         end = '\n'
         text = text[:-1]
     return start, text, end
+
 
 def heading(text, level):
     """ Turn a line of text into an RST heading.  Always returns a trailing
@@ -126,7 +131,7 @@ def heading(text, level):
     """
     _chars = ['=', '-', '~', '"', "'", '*', '^', '_', '+', ':', '#']
     getUnderline = lambda charIndex: _chars[charIndex] * len(text)
-    start, text, end = _stripNewline(text)
+    start, text, end = _separateNewlines(text)
     if level < 0 or level >= len(_chars):
         msg = ('A Heading cannot have a level less than 0 or larger ' +
                'than %s: %s' % (len(_chars), text))
@@ -136,6 +141,7 @@ def heading(text, level):
                                    getUnderline(level))
     else:
         return '%s%s\n%s\n' % (start, text, getUnderline(level-1))
+
 
 def list(elements, ordered=False, startIndex=1):
     """ Create an RST List from a collection.
@@ -168,6 +174,44 @@ def list(elements, ordered=False, startIndex=1):
         else:
             retVal += '- %s\n' % element
     return retVal
+
+
+def table(grid):
+    """ Build an RST table out of nested lists. """
+    grid = _padGrid(grid)
+    cell_width = 2 + max(reduce(lambda x,y: x+y,
+                                [[len(str(item)) for item in row]
+                                 for row in grid], []))
+    num_cols = len(grid[0])
+    rst = _tableDiv(num_cols, cell_width, 0)
+    header_flag = 1
+    for row in grid:
+        rst = rst + '| ' + '| '.join([_normalizeCell(x, cell_width-1)
+                                      for x in row]) + '|\n'
+        rst = rst + _tableDiv(num_cols, cell_width, header_flag)
+        header_flag = 0
+    return rst
+
+
+def _tableDiv(num_cols, col_width, header_flag):
+    if header_flag == 1:
+        return num_cols*('+' + (col_width)*'=') + '+\n'
+    else:
+        return num_cols*('+' + (col_width)*'-') + '+\n'
+
+
+def _normalizeCell(string, length):
+    return string + ((length - len(string)) * ' ')
+
+
+def _padGrid(grid):
+    padChar = ''
+    maxRowLen = max([len(row) for row in grid])
+    for row in grid:
+        while len(row) < maxRowLen:
+            row.append(padChar)
+    return grid
+
 
 if __name__=="__main__":
     import doctest
