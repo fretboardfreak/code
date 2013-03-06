@@ -36,19 +36,21 @@ TASKS_SECTION = 'tasks'
 DEFAULT_INTERVAL = 20
 DEFAULT_CONFIG = {MAIN_SECTION: {INTERVAL: DEFAULT_INTERVAL,
                                  LAST_UPDATE: 0},
-                  TASKS_SECTION: {'Sanities': 0,
+                  TASKS_SECTION: {'Sanity Triage': 0,
                                   'Tickets': 0,
                                   'Emails': 0,
                                   'System Maintenance': 0,
                                   'Sprint Story': 0,
                                   'Meeting': 0,
+                                  'Support External': 0,
+                                  'Support Preventable': 0
                                   }
                  }
 
 # Zenity constants
 TIMEOUT = 300  # seconds
 SEPARATOR = ","
-TASK_LIST_CMD = ('zenity --list --text "%s" '
+TASK_LIST_CMD = ('zenity --list --text "%s" --height 400 '
                  '--checklist --multiple --separator "' + SEPARATOR +
                  '" --column "" --column "Task" ')
 NEW_TASK_CMD = ('zenity --entry --text "Please enter a new task (comma '
@@ -99,12 +101,18 @@ def runZenityCmd(cmd):
     startTime = time.time()
     proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
 
-    while startTime + TIMEOUT > time.time() and retCode is None:
+    while retCode is None:
         retCode = proc.poll()
+        if startTime + TIMEOUT < time.time():
+            print "killing zenity..."
+            subprocess.call(['killall', 'zenity'])
+            break
 
     if retCode is None:  # timeout or user clicked cancel
         return None
     stdout, _ = proc.communicate()
+    if stdout.strip() == '':
+        return None
     return stdout
 
 
@@ -118,8 +126,10 @@ def update(config):
     minsSinceUpdate = (time.time() - lastUpdateTimestamp) / 60.0
     print "Mins since update: %s" % minsSinceUpdate
 
-    taskList = ' '.join(['FALSE "%s"' % task for task in
-                         config[TASKS_SECTION].keys()])
+    tasks = config[TASKS_SECTION].keys()
+    tasks.sort()
+    taskList = ' '.join(['FALSE "%s"' % task for task in tasks])
+    taskList += ' FALSE "%s"' % ADD_TASK
 
     msg = ('What tasks have you worked on in the last %s mins?' %
            int(minsSinceUpdate))
@@ -128,16 +138,23 @@ def update(config):
         return True
 
     tasks = [task.strip() for task in response.split(SEPARATOR)]
-    print "tasks: %s" % tasks
 
+    newTasks = []
     if ADD_TASK in tasks:
-        tasks.pop(ADD_TASK)
-        newTasks = runZenityCmd(NEW_TASK_CMD)
-        addTasks(newTasks.split(SEPARATOR), config)
+        tasks.remove(ADD_TASK)
+        newTaskString = runZenityCmd(NEW_TASK_CMD)
+        newTasks = [task.strip() for task in newTaskString.split(SEPARATOR)]
+        addTasks(newTasks, config)
 
-    perTaskIncrement = minsSinceUpdate / len(tasks)
+    tasks.extend(newTasks)
+
+    divisions = len(tasks)
+    if divisions == 0:
+        divisions = 1
+    perTaskIncrement = minsSinceUpdate / divisions
     print "per task increment: %s" % perTaskIncrement
 
+    print "Tasks to update: %s" % tasks
     for task in tasks:
         config[TASKS_SECTION][task] = (float(config[TASKS_SECTION][task]) +
                                        perTaskIncrement)
@@ -150,7 +167,7 @@ def parseCmdLine():
     manage cli invocation
     """
     usage = '%prog [options] CONFIG_FILE'
-    version = '%prog v0.1'
+    version = '%prog v0.2'
     description = __doc__
     parser = OptParser(usage=usage, version=version, description=description)
     parser.add_option('-i', '--interval', default=DEFAULT_INTERVAL,
@@ -176,8 +193,6 @@ def main():
 
     config[MAIN_SECTION][LAST_UPDATE] = time.time()
     config.write()
-
-    print config
 
     while 1:
         config.reload()
