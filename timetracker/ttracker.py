@@ -36,14 +36,17 @@ TASKS_SECTION = 'tasks'
 DEFAULT_INTERVAL = 20
 DEFAULT_CONFIG = {MAIN_SECTION: {INTERVAL: DEFAULT_INTERVAL,
                                  LAST_UPDATE: 0},
-                  TASKS_SECTION: {'Sanity Triage': 0,
-                                  'Tickets': 0,
-                                  'Emails': 0,
-                                  'System Maintenance': 0,
-                                  'Sprint Story': 0,
-                                  'Meeting': 0,
+                  TASKS_SECTION: {'Collaboration': 0,
+                                  'Development': 0,
+                                  'Docs': 0,
+                                  'Release': 0,
+                                  'Reviews': 0,
+                                  'Scrum Activities': 0,
                                   'Support External': 0,
-                                  'Support Preventable': 0
+                                  'Support Preventable': 0,
+                                  'System Maintenance': 0,
+                                  'Testing': 0,
+                                  'Misc': 0,
                                   }
                  }
 
@@ -57,6 +60,10 @@ NEW_TASK_CMD = ('zenity --entry --text "Please enter a new task (comma '
                 'separated for multiple, duplicates are ignored)"')
 ADD_TASK = 'Add Task'
 
+def getReadableTime(seconds):
+    """ Return a Human Readable Date given a number of seconds since the Epoch.
+    """
+    return time.asctime(time.localtime(seconds))
 
 def setConfigDefaults(config):
     """ Make sure all the required sections and fields are in the config file.
@@ -99,12 +106,13 @@ def runZenityCmd(cmd):
     """
     retCode = None
     startTime = time.time()
-    proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+    proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE)
 
     while retCode is None:
         retCode = proc.poll()
         if startTime + TIMEOUT < time.time():
-            print "killing zenity..."
+            print "  Timeout: killing zenity..."
             subprocess.call(['killall', 'zenity'])
             break
 
@@ -124,7 +132,7 @@ def update(config):
     config.reload()
     lastUpdateTimestamp = float(config[MAIN_SECTION][LAST_UPDATE])
     minsSinceUpdate = (time.time() - lastUpdateTimestamp) / 60.0
-    print "Mins since update: %s" % minsSinceUpdate
+    print "  Mins since update: %s" % minsSinceUpdate
 
     tasks = config[TASKS_SECTION].keys()
     tasks.sort()
@@ -152,9 +160,9 @@ def update(config):
     if divisions == 0:
         divisions = 1
     perTaskIncrement = minsSinceUpdate / divisions
-    print "per task increment: %s" % perTaskIncrement
+    print "  per task increment: %s" % perTaskIncrement
 
-    print "Tasks to update: %s" % tasks
+    print "  Tasks to update: %s" % tasks
     for task in tasks:
         config[TASKS_SECTION][task] = (float(config[TASKS_SECTION][task]) +
                                        perTaskIncrement)
@@ -197,12 +205,12 @@ def main():
     while 1:
         config.reload()
         interval = float(config[MAIN_SECTION][INTERVAL])
-        print "%s minutes until next update..." % interval
+        print "Next update at %s" % getReadableTime(time.time() + (interval * 60))
 
         time.sleep(interval * 60)
 
         if update(config):
-            print "Skipped update..."
+            print "  Skipped update..."
 
 
 if __name__ == '__main__':
