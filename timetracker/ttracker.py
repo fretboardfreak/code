@@ -47,6 +47,8 @@ DEFAULT_CONFIG = {MAIN_SECTION: {INTERVAL: DEFAULT_INTERVAL,
                                   'System Maintenance': 0,
                                   'Testing': 0,
                                   'Misc': 0,
+                                  'Email': 0,
+                                  'Break': 0,
                                   }
                  }
 
