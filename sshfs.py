@@ -64,6 +64,7 @@ def unmount(opts):
         cmd = cmdStr % target
     print  "Removing mountpoint: %s" % target
     _executeCommand(cmd)
+    os.rmdir(target)
 
 
 def parseCmdLine(defaultAction):
