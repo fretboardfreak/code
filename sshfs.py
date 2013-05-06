@@ -5,6 +5,11 @@
 import sys, optparse, commands, os
 
 
+# Global Script Options
+SMS_BIN = '/local/sandc3/work/bin'
+MOUNT_DIR = '/local/sandc3/sshfs'
+
+
 def _getMountPoints():
     """ Run the bash command: grep sshfs /etc/mtab | cut -f 2 -d ' '; to get
         the list of sshfs mount points.
@@ -26,28 +31,42 @@ def _executeCommand(cmd):
         return
     print "Failure:"
     print output
+    return status
+
+
+def _prepareDestination(dest, opts):
+    """ Make sure the destination directory exists.  If given a relative
+        destination it will be placed under the MOUNT_DIR directory.
+    """
+    if not os.path.isabs(dest):
+        dest = os.path.join(opts.mountDir, dest)
+    if not os.path.exists(dest):
+        os.mkdir(dest)
+    return dest
 
 
 def listMounts(opts):
+    """ List the existing sshfs mountpoints on the system.
+    """
     mountpoints = _getMountPoints()
     print '\n'.join(['%s: %s' % (count, mnt) for count, mnt in enumerate(mountpoints)])
+    return 0
 
 
 def mount(opts):
     """ Create an sshfs mount point
     """
-    dest = opts.args.pop(-1)
-    if not os.path.isabs(dest):
-        dest = os.path.join(opts.mountDir, dest)
-    if not os.path.exists(dest):
-        os.mkdir(dest)
+    dest = _prepareDestination(opts.args.pop(-1), opts)
     opts.args.append(dest)
     cmd = 'sshfs %s' % ' '.join(opts.args)
     print 'Creating mountpoint: %s' % dest
-    _executeCommand(cmd)
+    return _executeCommand(cmd)
 
 
 def unmount(opts):
+    """ Remove an existing sshfs mountpoint and clean up the target directories
+        too.
+    """
     cmdStr = "fusermount -u %s"
     mountpoints = _getMountPoints()
 
@@ -63,8 +82,35 @@ def unmount(opts):
         target = mountpoints.pop(targetIndex)
         cmd = cmdStr % target
     print  "Removing mountpoint: %s" % target
-    _executeCommand(cmd)
-    os.rmdir(target)
+    if _executeCommand(cmd) == 0:
+        os.rmdir(target)
+        return 0
+    return 1
+
+
+def mountSms(opts):
+    """ Convenience feature to mount the CLI dir of an SMS system with a
+        corresponding "sms-system.sh" based script in the SMS_BIN directory.
+
+        .. note::  The bash script just needs to print the IP address when
+                   executed with the "-l" flag.
+    """
+    smsName = opts.args.pop()
+    if not smsName in os.listdir(opts.smsBin):
+        print "No sms-system.sh bash script for SMS '%s'" % smsName
+        sys.exit(1)
+
+    getIPCmd = "%s -l" % (os.path.join(opts.smsBin, smsName))
+    status, ip = commands.getstatusoutput(getIPCmd)
+    if status != 0:
+        print "Couldn't retrieve IP address of requested SMS '%s'" % smsName
+        print "Output of \"%s\": %s" % (getIPCmd, ip)
+        sys.exit(1)
+
+    dest = _prepareDestination(smsName, opts)
+    cmd = "sshfs service@%s:/var/log/VPlex/cli %s" % (ip, os.path.join(opts.mountDir, dest))
+    print 'Creating mountpoint: %s' % dest
+    return _executeCommand(cmd)
 
 
 def parseCmdLine(defaultAction):
@@ -82,6 +128,9 @@ def parseCmdLine(defaultAction):
                       const=unmount, help="Remove an existing mountpoint.")
     parser.add_option('-l', '--list', dest='action', action='store_const',
                       const=listMounts, help="List existing mountpoints. [default action]")
+    parser.add_option('-s', '--sms', dest='action', action='store_const',
+                      const=mountSms, help="Mount an SMS system with using " +
+                      "Curtis's \"sms-system.sh\" bash scripts.")
 
     opts, args = parser.parse_args()
     if not opts.action:
@@ -91,13 +140,17 @@ def parseCmdLine(defaultAction):
 
     return opts
 
+
 def main():
+    """ Execute the script.
+    """
     opts = parseCmdLine(defaultAction=listMounts)
-    opts.mountDir = '/local/sandc3/sshfs'
 
-    opts.action(opts)
+    opts.smsBin = SMS_BIN
+    opts.mountDir = MOUNT_DIR
 
-    return 0
+    return opts.action(opts)
+
 
 if __name__ == '__main__':
     sys.exit(main())
