@@ -50,14 +50,34 @@ elif [[ $# -eq 1 ]]; then
     elif [[ $1 = "--help" ]]; then
         usage
         exit
+    elif [[ $1 = "-n" ]]; then
+        usage
+        exit
     fi
     name="${1}"
     command=""
     attach
 elif [[ $# -eq 2 ]]; then
+    if [[ $1 = "-n" ]]; then
+        name="${2}"
+        command="bash"
+        mode="-n"
+        dt
+    fi
     name="${1}"
     command="${2}"
     create
+elif [[ $# -eq 3 ]]; then
+    if [[ $1 = "-n" ]]; then
+        name="${2}"
+        command="${3}"
+        mode="-n"
+        dt
+    else
+        usage
+        exit
+    fi
 else
     usage
+    exit
 fi
