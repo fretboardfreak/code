@@ -4,7 +4,7 @@ if [[ `hostname` = sandc3 ]]
 then
     echo "Running backup on host `hostname`"
     SOURCE_DIR="/local/sandc3/"
-    SOURCES="fret config code blog work"
+    SOURCES="fret config code blog notes"
     DEST_DIR="/local/nobackup/backups/"
 elif [[ `hostname` = shiny ]]
 then

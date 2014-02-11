@@ -6,7 +6,7 @@ import sys, optparse, commands, os
 
 
 # Global Script Options
-SMS_BIN = '/local/sandc3/work/bin'
+SMS_BIN = '/local/sandc3/bin'
 MOUNT_DIR = '/local/sandc3/sshfs'
 
 
@@ -28,7 +28,7 @@ def _executeCommand(cmd):
     """
     status, output = commands.getstatusoutput(cmd)
     if status == 0:
-        return
+        return 0
     print "Failure:"
     print output
     return status
@@ -70,6 +70,7 @@ def unmount(opts):
     cmdStr = "fusermount -u %s"
     mountpoints = _getMountPoints()
 
+    cmd = ''
     target = opts.args.pop(0)
     if os.path.exists(target) and target in mountpoints:
         cmd = cmdStr % target
