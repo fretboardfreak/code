@@ -13,6 +13,11 @@ RST Constructs to be supported:
     - list (unordered, ordered)
     - table
 """
+__version__ = "0.1"
+__date__ = "130212"
+__author__ = "Curtis Sand"
+
+
 import docutils.core
 import sys, os.path
 
