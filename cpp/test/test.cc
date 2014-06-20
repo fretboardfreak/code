@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "test.h"
+#include <ctime>
 
 using namespace std;
 using namespace foobar;
@@ -20,13 +21,23 @@ Foo::get_val()
 { return 999; }
 
 int main(int argc, char **argv){
-    int num=0;
-    cout << "gimme a number: ";
-    cin >> num;
-    Test test_obj = Test(num);
-    cout << "Value is " << test_obj.get_val() << endl;
-    cout << "Value is now " << test_obj.get_val() << endl;
-    cout << "Banana is " << banana.get_val() << endl;
+    //int num=0;
+    //cout << "gimme a number: ";
+    //cin >> num;
+    //Test test_obj = Test(num);
+    //cout << "Value is " << test_obj.get_val() << endl;
+    //cout << "Value is now " << test_obj.get_val() << endl;
+    //cout << "Banana is " << banana.get_val() << endl;
+
+    time_t current;
+    time(&current);
+    cout << "Current time is " << current << endl;
+
+    int start = 1403294843;
+    int duration = (int)current - start;
+    cout << duration << " seconds have passed since " << start << endl;
+
+
 
     return 0;
 };
