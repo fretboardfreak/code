@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# Modify font size of URXVT terminals on the fly
+
+DEFAULT=10
+NEWSIZE=$1
+[[ -z $NEWSIZE ]] && NEWSIZE=$DEFAULT
+
+printf '\33]50;%s%d\007' "xft:Bitstream Vera Sans Mono:pixelsize=$NEWSIZE:antialias=false:hinting=true"
