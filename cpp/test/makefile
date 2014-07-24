@@ -10,7 +10,7 @@
 # and optionally the CFLAGS Lists to finish
 
 CC = g++
-CFLAGS = -g -O2
+CFLAGS = -g -O2 -std=c++11
 OBJECTS = test.o
 EXECUTABLE = foobar
 LIBRARIES =
