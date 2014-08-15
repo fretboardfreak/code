@@ -1,4 +1,5 @@
 import os, sys
+from copy import deepcopy
 from argparse import ArgumentParser
 
 class Dispatcher:
@@ -28,19 +29,20 @@ class Dispatcher:
     def _add_action_argument_group(self, parser):
         action_group = parser.add_argument_group('actions')
         for opt, (kwargs, _) in self.actions.iteritems():
+            arg_dict = deepcopy(self.common_action_args)
+            arg_dict.update(kwargs)
             short = None
             try:
-                short = kwargs.pop('short')
+                short = arg_dict.pop('short')
             except KeyError:
                 pass
-            if 'const' not in kwargs.keys():
-                kwargs['const'] = opt
-            kwargs.update(self.common_action_args)
+            if 'const' not in arg_dict.keys():
+                arg_dict['const'] = opt
             if short:
                 option = ('-' + short, '--' + opt)
             else:
                 option = ('--' + opt,)
-            action_group.add_argument(*option, **kwargs)
+            action_group.add_argument(*option, **arg_dict)
         return action_group
 
     def parse_args(self):
@@ -59,7 +61,7 @@ class Dispatcher:
     def do_action(self, **kwargs):
         if not self._args_parsed:
             self.parse_args()
-        self.actions[self._parsed_args.action][1](self._parsed_args.args, **kwargs)
+        self.actions[self._parsed_args.action][1](self._parsed_args, **kwargs)
 
 if __name__=="__main__":
 
