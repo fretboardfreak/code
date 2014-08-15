@@ -8,13 +8,23 @@ usage () {
 }
 
 PORT=8000
-if [[ $# -eq 1 ]]; then
-    if [[ "${1:0:2}" == "-h" ]] || [[ "${1:0:3}" == "--h" ]]; then
+for arg in $@; do
+    if [[ "${arg:0:2}" == "-h" ]] || [[ "${arg:0:3}" == "--h" ]]; then
         usage;
     fi
+done
+
+if [[ $# -eq 1 ]]; then
     PORT=$1
-elif [[ $# -gt 1 ]]; then
+    DIR=
+elif [[ $# -eq 2 ]]; then
+    PORT=$1
+    DIR=$2
+elif [[ $# -gt 2 ]]; then
     usage;
 fi
 
+if [[ ! -z $DIR ]]; then
+    cd $DIR
+fi
 python -m SimpleHTTPServer $PORT
