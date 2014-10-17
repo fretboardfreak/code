@@ -27,4 +27,6 @@ fi
 if [[ ! -z $DIR ]]; then
     cd $DIR
 fi
-python -m SimpleHTTPServer $PORT
+#python -m SimpleHTTPServer $PORT
+
+python -c "import SimpleHTTPServer, SocketServer, BaseHTTPServer; SimpleHTTPServer.test(SimpleHTTPServer.SimpleHTTPRequestHandler, type('Server', (BaseHTTPServer.HTTPServer, SocketServer.ThreadingMixIn, object), {}))" $PORT
