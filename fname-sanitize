@@ -1,0 +1,44 @@
+#!/usr/bin/env python3
+VERSION="0.1"
+DESCRIPTION="Sanitize text to make a nice filename. (Version: %s)" % VERSION
+
+import sys, argparse, re, string
+
+def main():
+    args = parse_cmd_line()
+    print(sanitize_string(input_string=args.string, case=args.case,
+                          whitespace=args.whitespace, symbol=args.symbol))
+    return 0
+
+def parse_cmd_line():
+    parser = argparse.ArgumentParser(description=DESCRIPTION)
+    parser.add_argument('-c', '--no-case', action='store_false',
+                        default=True, dest='case',
+                        help="Don't convert to lower case.")
+    parser.add_argument('-w', '--no-whitespace', action='store_false',
+                        default=True, dest='whitespace',
+                        help="Don't convert whitespace into hyphens.")
+    parser.add_argument('-s', '--no-symbol', action='store_false',
+                        default=True, dest='symbol',
+                        help="Don't remove symbols")
+    args, unknown = parser.parse_known_args()
+    setattr(args, 'string', ' '.join(unknown))
+    return args
+
+def sanitize_string(input_string, case=None, whitespace=None, symbol=None):
+    result = input_string
+    if case:
+        result = result.lower()
+    # convert symbols before whitespace so the '-' representation of whitespace
+    # doesn't get removed
+    if symbol:
+        symbols = string.punctuation.replace('.', '')
+        for sym in symbols:
+            result = result.replace(sym, '')
+    if whitespace:
+        result = re.sub(' +', '-', result)
+        result = re.sub('--+', '-', result)
+    return result
+
+if __name__ == '__main__':
+    sys.exit(main())
