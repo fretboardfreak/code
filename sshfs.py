@@ -39,7 +39,7 @@ def listMounts(opts):
 def mount(opts):
     """Create an sshfs mount point."""
     _prepareDestination(opts.args[-1])
-    cmd = 'sshfs %s' % ' '.join(opts.args)
+    cmd = 'sshfs -o nonempty -o allow_other -o kernel_cache -o auto_cache -o reconnect %s' % ' '.join(opts.args)
     print 'Creating mountpoint: %s' % opts.args[-1]
     return _executeCommand(cmd)
 
