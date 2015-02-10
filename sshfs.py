@@ -7,7 +7,7 @@ import re
 import os
 import sys
 import argparse
-import commands
+from subprocess import Popen, PIPE, STDOUT
 from itertools import chain
 
 VERSION = 'v0.1'
@@ -97,15 +97,11 @@ class SSHFS(object):
 
 
 def _execute(cmd):
-    """Execute a bash command and print the results."""
-    if isinstance(cmd, list):
-        cmd = ' '.join(cmd)
-    status, output = commands.getstatusoutput(cmd)
-    if status == 0:
-        return 0
-    print "Failure:"
-    print output
-    return status
+    proc = Popen(cmd, stdout=PIPE, stderr=STDOUT)
+    output, _ = proc.communicate()
+    if proc.returncode:
+        print "Subcommand Failed:\n%s" % output
+    return proc.returncode
 
 
 if __name__ == '__main__':
