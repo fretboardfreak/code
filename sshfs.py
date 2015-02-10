@@ -15,15 +15,48 @@ VERSION = 'v0.1'
 
 def main():
     parser = argparse.ArgumentParser(version=VERSION, description=__doc__)
+    parser.add_argument('-l', '--list', dest='action', action='store_const',
+                        const=Actions.list, help='List existing mountpoints.')
+    parser.add_argument('-m', '--mount', dest='action', action='store_const',
+                        const=Actions.mount, help='Create a new mountpoint.')
+    parser.add_argument('-u', '--umount', dest='action', action='store_const',
+                        const=Actions.umount,
+                        help='Remove an existing mountpoint.')
+
+    parser.set_defaults(action=Actions.list)
     opts, args = parser.parse_known_args()
 
-    sshfs = SSHFS()
-    if len(args) == 0:
+    try:
+        sshfs = SSHFS()
+        opts.action(sshfs, args)
+    except SSHFSError, exc:
+        print exc.message
+        return 1
+    return 0
+
+
+class Actions(object):
+    @staticmethod
+    def list(sshfs, args):
         sshfs.list_mountpoints()
-    elif len(args) == 1:
-        sshfs.unmount(args[0])
-    elif len(args) == 2:
+
+    @staticmethod
+    def mount(sshfs, args):
+        if len(args) < 2 or len(args) > 2:
+            raise SSHFSError(
+                    'Bad Argument Count: Creating an SSHFS mount '
+                    'requires a Source and a Destination argument only.')
+        print "Mounting %s to %s..." % (args[0], args[1])
         sshfs.mount(args[0], args[1])
+
+    @staticmethod
+    def umount(sshfs, args):
+        if len(args) < 1 or len(args) > 1:
+            raise SSHFSError(
+                    'Bad Argument Count: Removing an SSHFS mount '
+                    'requires an existing mountpoint as the argument.')
+        print "Unmounting %s..." % args[0]
+        sshfs.unmount(args[0])
 
 
 class Mountpoints(list):
@@ -77,9 +110,9 @@ class SSHFS(object):
         """Mountpoint can either be a path or an index for self.mountpoints"""
         err_msg = ("The given mountpoint '%s' doesn't appear to exist." %
                    mountpoint)
-        if isinstance(mountpoint, int):
+        if mountpoint.isdigit():
             try:
-                mountpoint = self.mountpoints[mountpoint]
+                mountpoint = self.mountpoints[int(mountpoint)]
             except IndexError:
                 raise Exception(err_msg)
         elif not os.path.exists(mountpoint):
@@ -94,6 +127,10 @@ class SSHFS(object):
             if e.args[0] == 39 and 'not empty' in e.args[1].lower():
                 pass
         self._load_mountpoints()
+
+
+class SSHFSError(Exception):
+    pass
 
 
 def _execute(cmd):
