@@ -34,7 +34,11 @@ while true ; do
         esac
 done
 
-path="${1}"
-tmp_path="${1}.tmp"
+path="${1%/}"
+tmp_path="${path}.tmp"
 
-cp -r ${path} ${tmp_path} && rm -r ${path} && mv ${tmp_path} ${path}
+if [[ -f ${path} ]] || [[ -d ${path} ]]; then
+    cp -r ${path} ${tmp_path} && rm -r ${path} && mv ${tmp_path} ${path}
+else
+    echo "Path ${path} doesn't appear to exist"
+fi
