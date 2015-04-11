@@ -4,12 +4,13 @@ if [ $# -eq 0 ]
     then
     find . -name "*.pyc" | xargs rm -f
     find . -name "*.pyo" | xargs rm -f
+    find . -name "__pycache__" | xargs rm -rf
 elif [ $# -eq 1 ]
     then
     find $1 -name "*.pyc" | xargs rm -f
     find $1 -name "*.pyo" | xargs rm -f
+    find $1 -name "__pycache__" | xargs rm -rf
 else
     echo "Usage: rmpyc [dir-to-search-in]"
     exit 1
 fi
-
