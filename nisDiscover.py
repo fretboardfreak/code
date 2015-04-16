@@ -34,6 +34,8 @@ def main():
     with open(logFile, 'w') as log:
         log.write(getTitle())
         log.write('\nNIS Maps of domain: %s\n' % nis.get_default_domain())
+        log.write('List of NIS Maps present:\n\n%s\n\n' %
+                  '\n'.join(['- %s' % mapname for mapname in maps]))
         for mapname in maps:
             log.write('\n%s:\n' % mapname)
             entries = nis.cat(mapname)
