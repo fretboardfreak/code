@@ -1,0 +1,41 @@
+#!/bin/bash
+
+SCRIPT=$0
+ERR_MSG=""
+
+usage () {
+    echo "$SCRIPT [-h|--help] [-s|--size SIZE] DESTINATION";
+    if [[ "${ERR_MSG}" != "" ]]; then
+        echo -e "\n$ERR_MSG";
+    fi
+    exit 1;
+}
+
+ARGS=`getopt -o "hs:" -l "help,size:" -n "$SCRIPT" -- "$@"`
+if [ $? -ne 0 ]; then
+    # bad arguments found
+    exit 1;
+fi
+eval set -- "$ARGS"
+
+SIZE="20m"
+
+while true ; do
+    case "$1" in
+        -h|--help) usage; shift ;;
+        -s|--size) SIZE=$2; shift 2;;
+        --) shift ; break ;;
+        *) echo "Internal error!" ; exit 1 ;;
+    esac
+done
+
+DEST=$1
+
+if [[ ! -d ${DEST} ]]; then
+    ERR_MSG="'${DEST}' does not appear to be a directory.\n";
+    ERR_MSG="${ERR_MSG}The tmpfs filesystem must be mounted over a directory.";
+    usage;
+fi
+
+echo "Mounting a '${SIZE}' tmpfs filesystem to '${DEST}'..."
+sudo mount -t tmpfs -o size=${SIZE} tmpfs ${DEST}
