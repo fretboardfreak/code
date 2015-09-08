@@ -1,0 +1,178 @@
+#!/bin/bash
+
+SCRIPT=$0
+
+TMP="/tmp"
+PROMPT_FOR_CLEANUP=false
+
+usage () {
+    echo "$SCRIPT [-h|--help] [OPTIONS] ENCRYPTED_FILE";
+    echo -e "\n$SCRIPT is short for 'encrypted edit' and is a wrapper around "
+    echo -e "the tmpfs, gpg2 and vim tools to simplify the process of safely "
+    echo -e "decrypting, editing then re-encrypting a file."
+    echo -e "\nOptions:\n"
+    echo -e "  -h|--help       : print this help message."
+    echo -e "  -d|--dir TMPDIR : change the location used for temporary files."
+    echo -e "  -p|--prompt : prompt before cleaning up temporary files."
+    echo -e "\nAlgorithm:\n  1. Make temporary directory under '${TMP}'."
+    echo -e "  2. Mount a tmpfs filesystem over the temporary directory."
+    echo -e "  3. Decrypt the given file to the temporary directory."
+    echo -e "  4. Write a checksum of the file in the temporary directory."
+    echo -e "  5. Open the vi editor for the user to edit the file."
+    echo -e "  6. If the checksum of the file has changed, re-encrypt the "
+    echo -e "     file and overwrite the original encrypted file."
+    echo -e "  7. Cleanup, rm all files in temporary directory, unmount the "
+    echo -e "     tmpfs filesystem and rm the temporary directory itself."
+    exit 1;
+}
+
+# Options with no args have no colon
+# Option with required arg has 1 colon
+# Option with optional arg has 2 colons
+ARGS=`getopt -o "hd:p" -l "help,dir:,prompt" -n "$SCRIPT" -- "$@"`
+if [ $? -ne 0 ]; then
+    # bad arguments found
+    exit 1;
+fi
+eval set -- "$ARGS"
+
+while true ; do
+    case "$1" in
+        -h|--help) usage ; shift ;;
+        #-b|--b-long) echo "Option b, argument \`$2'" ; shift 2 ;;
+        #-c|--c-long)
+        #    # c has an optional argument. As we are in quoted mode,
+        #    # an empty parameter will be generated if its optional
+        #    # argument is not found.
+        #    case "$2" in
+        #            "") echo "Option c, no argument"; shift 2 ;;
+        #            *)  echo "Option c, argument \`$2'" ; shift 2 ;;
+        #    esac ;;
+        -d|--dir) TMP=$2; shift 2;;
+        -p|--prompt) PROMPT_FOR_CLEANUP=true; shift;;
+        --) shift ; break ;;
+        *) echo "Internal error!" ; exit 1 ;;
+    esac
+done
+
+SKIP_ENCRYPT_PHASE=false;
+SKIP_CLEANUP_PHASE=false;
+
+# 0. Check input filename
+if [[ $# -ne 1 ]]; then
+    echo "${SCRIPT} requires a single file path as an argument."
+    usage;
+fi
+enc_file=${1}
+if [[ ! -f ${enc_file} ]]; then
+    echo "Given file path '${enc_file}' does not appear to exist."
+    usage;
+fi
+echo "Updating encrypted file '${enc_file}'..."
+
+
+# 1. Make temporary directory under '${TMP}'."
+if [[ ! -d ${TMP} ]] ; then
+    echo "'${TMP}' does not appear to be a valid directory."
+    echo "Please choose an existing directory for holding temporary files."
+    usage;
+fi
+echo -n "Making temporary directory..."
+temp_dir=$(TMPDIR=${TMP} mktemp --directory)
+if [[ $? -ne 0 ]] || [[ ! -d ${temp_dir} ]]; then
+    echo -n "Error occured attempting to create a temporary directory: "
+    echo "${temp_dir}"
+fi
+echo -e "\tdone: ${temp_dir}"
+
+
+# 2. Mount a tmpfs filesystem over the temporary directory."
+echo -n "Mount a 20M tmpfs filesystem..."
+sudo mount -t tmpfs -o size=20m tmpfs ${temp_dir}
+echo -e "\tdone"
+
+
+# 3. Decrypt the given file to the temporary directory."
+echo "Decrypting file..."
+plain_file="${temp_dir}/file"
+gpg2 -o ${plain_file} ${enc_file} 2>&1 | sed 's/\n/\n    /'
+decrypt_status=$?
+echo -e "\tdone"
+
+if [[ $decrypt_status -ne 0 ]]; then
+    echo "An error occurred while decrypting '${plain_file}'"
+    echo "Don't forget to cleanup the temporary directory: ${temp_dir}"
+    exit 1;
+fi
+
+
+# 4. Write a checksum of the file in the temporary directory."
+checksum_file="${temp_dir}/checksum"
+echo -n "Writing checksum..."
+sha256sum ${plain_file} > ${checksum_file}
+echo -e "\tdone"
+
+
+# 5. Open the vi editor for the user to edit the file."
+echo -n "Launching editor..."
+vim ${plain_file}
+echo -e "\tdone"
+
+
+# 6. If the checksum of the file has changed, re-encrypt the "
+#    file and overwrite the original encrypted file."
+echo -n "Verifying checksum..."
+sha256sum --check ${checksum_file} &>/dev/null
+if [[ $? -eq 0 ]]; then
+    echo -e "\tchecksum unchanged"
+    read -p "No new edits detected, re-encrypt the file anyways? (y/N) " answer
+    if [[ "${answer:0:1}" != "y" ]] && [[ "${answer:0:1}" != "Y" ]]; then
+        SKIP_ENCRYPT_PHASE=true;
+    fi
+else
+    echo -e "\tchecksum changed"
+fi
+if ! $SKIP_ENCRYPT_PHASE; then
+    echo -n "Re-encrypting file..."
+    gpg2 --encrypt --sign --armor --recipient "Curtis Sand" \
+        -o ${enc_file} --yes ${plain_file} 2>&1 | sed 's/^/    /'
+    enc_status=$?
+
+    if [[ $enc_status -ne 0 ]]; then
+        echo -e "\tFAILED!\nAutomatically skipping the cleanup phase..."
+        SKIP_CLEANUP_PHASE=true;
+    else
+        echo -e "\tsuccess."
+    fi
+else
+    echo "Skipping re-encryption phase..."
+fi
+
+
+# 7. Cleanup, rm all files in temporary directory, unmount the "
+#    tmpfs filesystem and rm the temporary directory itself."
+if $PROMPT_FOR_CLEANUP; then
+    read -p "Clean up temporary directory? (Y/n) " answer
+    if [[ "${answer:0:1}" == "n" ]] || [[ "${answer:0:1}" == "N" ]]; then
+        SKIP_CLEANUP_PHASE=true;
+    fi
+fi
+
+if $SKIP_CLEANUP_PHASE; then
+    echo "Skipping cleanup phase..."
+    echo "Ensure you unmount and remove '${temp_dir}' manually "
+    echo "to protect your data."
+    exit 1;
+else
+    echo -n "Removing files from temporary directory..."
+    rm -rf ${temp_dir}/*
+    echo -e "\tdone"
+
+    echo -n "Unmounting tmpfs filesystem..."
+    sudo umount ${temp_dir}
+    echo -e "\tdone"
+
+    echo -n "Removing the temporary directory..."
+    rm -rf ${temp_dir}
+    echo -e "\tdone"
+fi
