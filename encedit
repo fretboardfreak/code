@@ -18,12 +18,17 @@ SCRIPT=$0
 VERSION="1.0"
 
 TMP="/tmp"
-PROMPT_FOR_CLEANUP=false
+PROMPT_FOR_CLEANUP=false;
 SKIP_ENCRYPT_PHASE=false;
 SKIP_CLEANUP_PHASE=false;
+TEMP_DIR=;
+ENCRYPTED_FILE=;
+PLAIN_FILE=;
+CHECKSUM_FILE=;
+
 
 usage () {
-    echo "$SCRIPT [-h|--help] [OPTIONS] ENCRYPTED_FILE";
+    echo "Usage: $SCRIPT [-h|--help] [OPTIONS] ENCRYPTED_FILE";
     echo -e "\n$SCRIPT is short for 'encrypted edit' and is a wrapper around "
     echo -e "the tmpfs, gpg2 and vim tools to simplify the process of safely "
     echo -e "decrypting, editing then re-encrypting a file."
@@ -92,9 +97,9 @@ decrypt () {
 }
 
 write_checksum () {
-    checksum_file="${TEMP_DIR}/checksum"
+    CHECKSUM_FILE="${TEMP_DIR}/checksum"
     echo -n "Writing checksum..."
-    sha256sum ${PLAIN_FILE} > ${checksum_file}
+    sha256sum ${PLAIN_FILE} > ${CHECKSUM_FILE}
     echo -e "\tdone"
 }
 
@@ -106,7 +111,7 @@ editor () {
 
 verify_checksum () {
     echo -n "Verifying checksum..."
-    sha256sum --check ${checksum_file} &>/dev/null
+    sha256sum --check ${CHECKSUM_FILE} &>/dev/null
     if [[ $? -eq 0 ]]; then
         echo -e "\tchecksum unchanged"
         local answer=;
