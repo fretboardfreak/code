@@ -11,6 +11,10 @@
 # ... the bash code you want to profile
 # set +x
 # exec 2>&3 3>&-
+#
+# Note: this code was stolen from one of the answers to this stack overflow
+# topic:
+# http://stackoverflow.com/questions/5014823/how-to-profile-a-bash-shell-script
 
 PID=$1
 
