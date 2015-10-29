@@ -4,7 +4,7 @@
 # This script is used to collate profiling information that would be written by
 # the following code.  Wrap this around the bash code you wish to profile...
 #
-# exec 3>&2 2> >(tee /tmp/profile.$$.time |\
+# exec 3>&2 2> >(tee /tmp/profile.$$.log |\
 #                sed -u 's/^.*$/now/' |\
 #                date -f - +%s.%N > /tmp/profile.$$.time)
 # set -x
