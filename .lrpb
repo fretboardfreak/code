@@ -1,0 +1,52 @@
+#!/bin/bash
+
+SCRIPT=$0
+
+usage () {
+    echo "$SCRIPT [-h|--help] [OPTION]";
+    echo "   -x|--xvideos     xvideos.com"
+    echo "   -p|--pandamovies pandamovies.com"
+    echo "   -d|--dansmovies  dansmovies.com"
+    echo "   -s|--spankwire   spankwire.com"
+    echo "   -r|--redtube     redtube.com"
+    echo "   -b|--pornhub     pornhub.com"
+    exit 1;
+}
+
+# Options with no args have no colon
+# Option with required arg has 1 colon
+# Option with optional arg has 2 colons
+ARGS=`getopt -o "hxpdsrb" -l "help,xvideos,pandamovies,dansmovies,spankwire,redtube,pornhub" -n "lrpb" -- "$@"`
+if [ $? -ne 0 ]; then
+    # bad arguments found
+    exit 1;
+fi
+eval set -- "$ARGS"
+
+URL=
+
+while true ; do
+    case "$1" in
+        -h|--help) usage ; shift ;;
+        -x|--xvideos) URL="xvideos.com"; shift ;;
+        -p|--panda*) URL="pandamovies.com"; shift ;;
+        -d|--dansmovies) URL="dansmovies.com"; shift ;;
+        -s|--spankwire) URL="spankwire.com"; shift ;;
+        -r|--redtube) URL="redtube.com"; shift ;;
+        -b|--pornhub) URL="pornhub.com"; shift ;;
+        #-b|--b-long) echo "Option b, argument \`$2'" ; shift 2 ;;
+        #-c|--c-long)
+        #    # c has an optional argument. As we are in quoted mode,
+        #    # an empty parameter will be generated if its optional
+        #    # argument is not found.
+        #    case "$2" in
+        #            "") echo "Option c, no argument"; shift 2 ;;
+        #            *)  echo "Option c, argument \`$2'" ; shift 2 ;;
+        #    esac ;;
+        --) shift ; break ;;
+        *) echo "Internal error!" ; exit 1 ;;
+    esac
+done
+
+echo "Opening \"${URL}\" in incognito mode..."
+google-chrome --incognito ${URL}
