@@ -25,6 +25,13 @@ def parse_cmd_line():
     setattr(args, 'string', ' '.join(unknown))
     return args
 
+def symbols_to_replace():
+    chars_to_filter = ['.', '-', '_']
+    retval = string.punctuation
+    for char in chars_to_filter:
+        retval = retval.replace(char, '')
+    return retval
+
 def sanitize_string(input_string, case=None, whitespace=None, symbol=None):
     result = input_string
     if case:
@@ -32,7 +39,7 @@ def sanitize_string(input_string, case=None, whitespace=None, symbol=None):
     # convert symbols before whitespace so the '-' representation of whitespace
     # doesn't get removed
     if symbol:
-        symbols = string.punctuation.replace('.', '')
+        symbols = symbols_to_replace()
         for sym in symbols:
             result = result.replace(sym, '')
     if whitespace:
