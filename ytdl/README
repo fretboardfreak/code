@@ -1,0 +1,41 @@
+===========
+YTDL README
+===========
+
+:date: 2015-12-06
+:author: Curtis Sand
+
+YTDL is a queued youtube audio download system. It uses zenity as the UI and
+will download the audio of chosen youtube videos as an mp3.
+
+There are three scripts that make up the system. The first is ``ytdl-queue``
+which calls zenity to gather info from the user and set up the queue file for a
+download job. Next is the ``ytdl-download-next`` script which downloads the
+oldest queued job in the queue directory. Finally comes the ``ytdl-download``
+script which calls ``ytdl-download-next`` over and over until the queue has
+emptied.
+
+To save typing the youtube URL that you give should only be the video ID
+portion, "tuPDBFpVpl8" instead of
+"https://www.youtube.come/watch?v=tuPDBFpVpl8".
+
+To complete the automation of the system you can set up a cronjob or sytemd
+service/timer pair to call the ``ytdl-download`` script periodically to
+periodically clear the download queue. You may also wish to write a similar
+cronjob or systemd service/timer pair to do something fancy with the
+downloaded files.
+
+Dependencies
+============
+
+- youtube-dl
+- ffmpeg
+- zenity
+- bash
+
+Setup
+=====
+
+Modify the variables in the three scripts to point to valid QUEUE, JOBS and
+DONE directories that you create, and ensure you have the dependencies
+installed.

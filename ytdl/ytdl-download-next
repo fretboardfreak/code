@@ -1,0 +1,48 @@
+#!/bin/bash
+
+# Copyright 2015 Curtis Sand
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# ytdl-download-next
+#
+# This script will consume queued jobs written to the $QUEUE directory,
+# download the youtube audio mp3 into the $DONE directory and log the whole
+# process in the $JOBS directory.
+#
+# In the event of a download failure, the log is moved to $JOBS/failed.$fname
+# and the queue file is left for a later attempt.
+
+QUEUE="/home/csand/storage/tmp/youtube/queue"
+JOBS="/home/csand/storage/tmp/youtube/jobs"
+DONE="/home/csand/storage/tmp/youtube/done"
+
+CMD_BASE="/usr/bin/youtube-dl --extract-audio --audio-format mp3"
+CMD_BASE="${CMD_BASE} --audio-quality 0 --restrict-filenames"
+CMD_BASE="${CMD_BASE} --youtube-skip-dash-manifest"
+
+# grab oldest queued job
+fname="$(ls -1t $QUEUE|tail -n 1)"
+if [[ "${fname}" == "" ]] ; then
+    exit 1
+fi
+url="https://www.youtube.com/watch?v=$(cat ${QUEUE}/${fname})"
+
+${CMD_BASE} ${url} -o "${DONE}/${fname}.%(ext)s" &> ${JOBS}/${fname}
+rc=$?
+if [[ "$rc" == "0" ]] ; then
+    rm -f ${QUEUE}/${fname}
+else
+    mv -f ${JOBS}/${fname} ${JOBS}/failed.${fname}
+    exit $rc
+fi
