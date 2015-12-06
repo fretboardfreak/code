@@ -42,6 +42,10 @@ def sanitize_string(input_string, case=None, whitespace=None, symbol=None):
         symbols = symbols_to_replace()
         for sym in symbols:
             result = result.replace(sym, '')
+        # reduce multiple underscores to a single underscore
+        result = re.sub('__+', '_', result)
+        result = re.sub('_-_', '-', result)
+        result = re.sub('-_-', '_', result)
     if whitespace:
         result = re.sub(' +', '-', result)
         result = re.sub('--+', '-', result)
