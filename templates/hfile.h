@@ -6,5 +6,8 @@
  *
  */
 
+#ifndef HFILE_H
+#define HFILE_H
 
-/* EOF hfile.h */
+
+#endif /* EOF hfile.h */
