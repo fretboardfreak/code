@@ -14,10 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Modify font size of URXVT terminals on the fly
+args=("$@")
+unset args[0]
+#sleep ${1} && zenity --info --text "`echo ${args[@]}`"
 
-DEFAULT=10
-NEWSIZE=$1
-[[ -z $NEWSIZE ]] && NEWSIZE=$DEFAULT
-
-printf '\33]50;%s%d\007' "xft:Bitstream Vera Sans Mono:pixelsize=$NEWSIZE:antialias=false:hinting=true"
+ssh root@$1 "DISPLAY=:0 zenity --info --text \"`echo ${args[@]}`\""

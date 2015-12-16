@@ -1,7 +1,0 @@
-#!/bin/bash
-
-args=("$@")
-unset args[0]
-#sleep ${1} && zenity --info --text "`echo ${args[@]}`"
-
-ssh root@$1 "DISPLAY=:0 zenity --info --text \"`echo ${args[@]}`\""
