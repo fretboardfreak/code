@@ -1,0 +1,77 @@
+#!/bin/bash
+
+# Copyright 2015 Curtis Sand
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+SCRIPT=$0
+
+usage () {
+    echo "$SCRIPT [-h|--help] WEBSITE_DIR";
+    echo -e "\nUpdate Curtis' website at the call of a script."
+    exit 1;
+}
+
+tryordie () {
+    local msg=${1}
+    local cmd="${@:2}"
+    echo -e "${msg}"
+    ${cmd}
+    local status=$?
+    if [[ "$status" != "0" ]]; then
+        echo FAILED
+        exit 1;
+    fi
+}
+
+ARGS=`getopt -o "h" -l "help" -n "update_website" -- "$@"`
+if [ $? -ne 0 ]; then
+    # bad arguments found
+    exit 1;
+fi
+eval set -- "$ARGS"
+
+while true ; do
+    case "$1" in
+        -h|--help) usage ; shift ;;
+        --) shift ; break ;;
+        *) echo "Internal error!" ; exit 1 ;;
+    esac
+done
+
+WEBSITE_DIR=${1}
+SUBMODULES="fret music"
+
+tryordie "Entering Website Dir, \"${WEBSITE_DIR}\"..." \
+    pushd ${WEBSITE_DIR} 2>/dev/null
+
+# Clean things up
+tryordie "Cleaning Up..." git clean -fd
+tryordie "Updating Main Repo..." git pull --rebase
+
+# Update the submodules
+for submodule in ${submodules}; do
+    tryordie "Updating Submodule, \"${submodule}\"..." \
+        pushd ${submodule} 2>/dev/null && \
+        git clean -fd && \
+        git pull --rebase && \
+        popd 2>/dev/null
+done
+
+# Build the website
+tryordie "Building Website TMP Cache..." make tmp_cache
+tryordie "Uploading Website..." make upload_cache
+
+tryordie "Update Complete" popd &>/dev/null  # /WEBSITE_DIR
+
+notify-send --expire-time 35000 "Website Updated"
