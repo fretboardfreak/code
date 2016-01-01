@@ -50,7 +50,6 @@ while true ; do
 done
 
 WEBSITE_DIR=${1}
-SUBMODULES="fret music"
 
 tryordie "Entering Website Dir, \"${WEBSITE_DIR}\"..." \
     pushd ${WEBSITE_DIR} 2>/dev/null
@@ -60,12 +59,12 @@ tryordie "Cleaning Up..." git clean -fd
 tryordie "Updating Main Repo..." git pull --rebase
 
 # Update the submodules
-for submodule in ${submodules}; do
+for submodule in fret music; do
     tryordie "Updating Submodule, \"${submodule}\"..." \
-        pushd ${submodule} 2>/dev/null && \
-        git clean -fd && \
-        git pull --rebase && \
-        popd 2>/dev/null
+        pushd ${submodule} 2>/dev/null
+    tryordie "..Cleaning Submodule" git clean -fd
+    tryordie "..Pulling Submodule" git pull --rebase
+    tryordie "..Exiting Submodule" popd 2>/dev/null
 done
 
 # Build the website
