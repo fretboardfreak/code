@@ -16,7 +16,7 @@
 
 SCRIPT=$0
 
-STATUS_FILE='status.txt'
+STATUS_FILE='./status.txt'
 
 usage () {
     echo -e "$SCRIPT [-h|--help|-f|--file-presence|-c|--status-contents]\n"
@@ -77,13 +77,14 @@ if ! $FILE_PRESENCE; then
     echo -e "${missing}"
 else
     echo "Reverse Logic: checking all files referenced in \"${STATUS_FILE}\" exist..."
-    tasks=$(grep "^\`<" ${STATUS_FILE}|sed -e "s@\`<@@" -e "s@>\`_@@")
+    tasks=$(grep "\`<" ${STATUS_FILE}|sed -e "s@^.*\`<@@" -e "s@>\`_.*\$@@")
     missing=""
     for task in ${tasks}; do
         if [[ -f $task ]]; then
             echo -n " ."
         else
             missing="${missing}\n\"$task\"...\tFILE MISSING";
+            RC=1
         fi;
     done
     echo -e "${missing}"
