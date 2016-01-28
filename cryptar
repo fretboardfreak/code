@@ -1,0 +1,199 @@
+#!/bin/bash
+
+# Copyright 2015 Curtis Sand
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+SCRIPT=$0
+VERSION="1.0"
+
+TMP="/tmp"
+PROMPT_FOR_CLEANUP=false;
+SKIP_ENCRYPT_PHASE=false;
+SKIP_CLEANUP_PHASE=false;
+TEMP_DIR=;
+ENCRYPTED_FILE=;
+PLAIN_FILE=;
+CHECKSUM_FILE=;
+
+
+usage () {
+    echo "Usage: $SCRIPT [-h|--help] [OPTIONS] ENCRYPTED_TAR\n";
+    local msg="$SCRIPT is a wrapper around \
+              the tmpfs, gpg2 and tar tools to simplify the process of safely \
+              decrypting, editing then re-encrypting a tarball."
+    echo $msg|fmt
+    echo -e "\nVersion: ${VERSION}\nOptions:\n"
+    echo -e "  -h|--help       : print this help message."
+    echo -e "  -d|--dir TMPDIR : change the location used for temporary files."
+    echo -e "  -p|--prompt : prompt before cleaning up temporary files."
+    echo -e "\nAlgorithm:\n  1. Make temporary directory under '${TMP}'."
+    echo -e "  2. Mount a tmpfs filesystem over the temporary directory."
+    echo -e "  3. Decrypt the tarball to the temporary directory."
+    echo -e "  4. Write a checksum of the file in the temporary directory."
+    echo -e "  5. Extract tarball inside the temporary directory."
+    echo -e "  6. Open a bash session."
+    echo -e "  7. Recreate the tarball inside the temporary directory."
+    echo -e "  8. If the checksum of the file has changed, re-encrypt the "
+    echo -e "     file and overwrite the original encrypted file."
+    echo -e "  9. Cleanup, rm all files in temporary directory, unmount the "
+    echo -e "     tmpfs filesystem and rm the temporary directory itself."
+    exit 1;
+}
+
+get_input_filename () {
+    if [[ $# -ne 1 ]]; then
+        echo "${SCRIPT} requires a single file path as an argument."
+        usage;
+    fi
+    ENCRYPTED_FILE=${1}
+    if [[ ! -f ${ENCRYPTED_FILE} ]]; then
+        echo "Given file path '${ENCRYPTED_FILE}' does not appear to exist."
+        usage;
+    fi
+    echo "Updating encrypted file '${ENCRYPTED_FILE}'..."
+}
+
+make_temporary_directory () {
+    if [[ ! -d ${TMP} ]] ; then
+        echo "'${TMP}' does not appear to be a valid directory."
+        echo "Please choose an existing directory for holding temporary files."
+        usage;
+    fi
+    echo -n "Making temporary directory..."
+    TEMP_DIR=$(TMPDIR=${TMP} mktemp --directory)
+    if [[ $? -ne 0 ]] || [[ ! -d ${TEMP_DIR} ]]; then
+        echo -n "Error occured attempting to create a temporary directory: "
+        echo "${TEMP_DIR}"
+    fi
+    echo -e "\tdone: ${TEMP_DIR}"
+}
+
+mount_tmpfs () {
+    echo -n "Mount a 20M tmpfs filesystem..."
+    sudo mount -t tmpfs -o size=20m tmpfs ${TEMP_DIR}
+    echo -e "\tdone"
+}
+
+decrypt () {
+    echo "Decrypting file..."
+    PLAIN_FILE="${TEMP_DIR}/file"
+    gpg2 -o ${PLAIN_FILE} ${ENCRYPTED_FILE} 2>&1 | sed 's/\n/\n    /'
+    local decrypt_status=$?
+    echo -e "\tdone"
+
+    if [[ $decrypt_status -ne 0 ]]; then
+        echo "An error occurred while decrypting '${PLAIN_FILE}'"
+        echo "Don't forget to cleanup the temporary directory: ${TEMP_DIR}"
+        exit 1;
+    fi
+}
+
+write_checksum () {
+    CHECKSUM_FILE="${TEMP_DIR}/checksum"
+    echo -n "Writing checksum..."
+    sha256sum ${PLAIN_FILE} > ${CHECKSUM_FILE}
+    echo -e "\tdone"
+}
+
+verify_checksum () {
+    echo -n "Verifying checksum..."
+    sha256sum --check ${CHECKSUM_FILE} &>/dev/null
+    if [[ $? -eq 0 ]]; then
+        echo -e "\tchecksum unchanged"
+        local answer=;
+        read -p "No new edits detected, re-encrypt the file anyways? (y/N) " \
+            answer
+        if [[ "${answer:0:1}" != "y" ]] && [[ "${answer:0:1}" != "Y" ]]; then
+            SKIP_ENCRYPT_PHASE=true;
+        fi
+    else
+        echo -e "\tchecksum changed"
+    fi
+}
+
+reencrypt () {
+    if ! $SKIP_ENCRYPT_PHASE; then
+        echo -n "Re-encrypting file..."
+        gpg2 --encrypt --sign --armor --recipient "Curtis Sand" \
+            -o ${ENCRYPTED_FILE} --yes ${PLAIN_FILE} 2>&1 | sed 's/^/    /'
+        enc_status=$?
+
+        if [[ $enc_status -ne 0 ]]; then
+            echo -e "\tFAILED!\nAutomatically skipping the cleanup phase..."
+            SKIP_CLEANUP_PHASE=true;
+        else
+            echo -e "\tsuccess."
+        fi
+    else
+        echo "Skipping re-encryption phase..."
+    fi
+}
+
+cleanup () {
+    if $PROMPT_FOR_CLEANUP; then
+        local answer=;
+        read -p "Clean up temporary directory? (Y/n) " answer
+        if [[ "${answer:0:1}" == "n" ]] || [[ "${answer:0:1}" == "N" ]]; then
+            SKIP_CLEANUP_PHASE=true;
+        fi
+    fi
+
+    if $SKIP_CLEANUP_PHASE; then
+        echo "Skipping cleanup phase..."
+        echo "Ensure you unmount and remove '${TEMP_DIR}' manually "
+        echo "to protect your data."
+        exit 1;
+    else
+        echo -n "Removing files from temporary directory..."
+        rm -rf ${TEMP_DIR}/*
+        echo -e "\tdone"
+
+        echo -n "Unmounting tmpfs filesystem..."
+        sudo umount ${TEMP_DIR}
+        echo -e "\tdone"
+
+        echo -n "Removing the temporary directory..."
+        rm -rf ${TEMP_DIR}
+        echo -e "\tdone"
+    fi
+}
+
+ARGS=`getopt -o "hd:p" -l "help,dir:,prompt" -n "$SCRIPT" -- "$@"`
+if [ $? -ne 0 ]; then
+    # bad arguments found
+    exit 1;
+fi
+eval set -- "$ARGS"
+
+while true ; do
+    case "$1" in
+        -h|--help) usage ; shift ;;
+        -d|--dir) TMP=$2; shift 2;;
+        -p|--prompt) PROMPT_FOR_CLEANUP=true; shift;;
+        --) shift ; break ;;
+        *) echo "Internal error!" ; exit 1 ;;
+    esac
+done
+
+get_input_filename $@;
+make_temporary_directory;
+mount_tmpfs;
+decrypt;
+write_checksum;
+extract_tarball;
+start_subshell;
+recreate_tarball;
+verify_checksum;
+reencrypt;
+cleanup;
