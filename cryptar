@@ -80,8 +80,12 @@ make_temporary_directory () {
 }
 
 mount_tmpfs () {
-    echo -n "Mount a 20M tmpfs filesystem..."
-    sudo mount -t tmpfs -o size=20m tmpfs ${TEMP_DIR}
+    local encf_size=$(( $(/usr/bin/du -b file.txt | sed "s@\([0-9]*\).*@\1@") \
+                        / 1024 / 1024 ))
+    # mount a tmpfs filesystem about 10% larger than the encrypted file
+    local tmpfs_size=$(( $encf_size + $(( $encf_size / 10 )) ))
+    echo -n "Mount a ${tmpfs_size}M tmpfs filesystem..."
+    sudo mount -t tmpfs -o size=${tmpfs_size}m tmpfs ${TEMP_DIR}
     echo -e "\tdone"
 }
 
