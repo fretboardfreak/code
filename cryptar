@@ -84,8 +84,12 @@ mount_tmpfs () {
     local encf_size=$(( $(/usr/bin/du -b ${ENCRYPTED_FILE} | \
                           sed "s@\([0-9]*\).*@\1@") \
                         / 1024 / 1024 ))
-    # mount a tmpfs filesystem about 10% larger than the encrypted file
-    local tmpfs_size=$(( $encf_size + $(( $encf_size / 10 )) ))
+    if [[ $encf_size -le 1 ]]; then
+        local tmpfs_size=1
+    else
+        # mount a tmpfs filesystem about 10% larger than the encrypted file
+        local tmpfs_size=$(( $encf_size + $(( $encf_size / 10 )) ))
+    fi
     echo -n "Mount a ${tmpfs_size}M tmpfs filesystem..."
     sudo mount -t tmpfs -o size=${tmpfs_size}m tmpfs ${TEMP_DIR}
     echo -e "\tdone"
@@ -131,15 +135,18 @@ start_subshell () {
 recreate_tarball () {
     echo -n "Recreating tarball..."
     pushd ${CONTENTS_DIR} 2>&1 >/dev/null
-    tar cf ${PLAIN_FILE} *
+    local gitd=
+    [ -d .git ] && gitd='.git'
+    tar cf ${PLAIN_FILE} $gitd *
     popd 2>&1 >/dev/null
     echo -e "\tdone"
 }
 
 verify_checksum () {
     echo -n "Verifying checksum..."
-    sha256sum --check ${CHECKSUM_FILE} &>/dev/null
-    if [[ $? -eq 0 ]]; then
+    sha256sum --check ${CHECKSUM_FILE} #&>/dev/null
+    local checksum_status=$?
+    if [[ $checksum_status -eq 0 ]]; then
         echo -e "\tchecksum unchanged"
         local answer=;
         read -p "No new edits detected, re-encrypt the file anyways? (y/N) " \
