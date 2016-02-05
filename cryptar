@@ -25,6 +25,7 @@ TEMP_DIR=;
 ENCRYPTED_FILE=;
 PLAIN_FILE=;
 CHECKSUM_FILE=;
+CONTENTS_DIR=;
 
 
 usage () {
@@ -80,7 +81,8 @@ make_temporary_directory () {
 }
 
 mount_tmpfs () {
-    local encf_size=$(( $(/usr/bin/du -b file.txt | sed "s@\([0-9]*\).*@\1@") \
+    local encf_size=$(( $(/usr/bin/du -b ${ENCRYPTED_FILE} | \
+                          sed "s@\([0-9]*\).*@\1@") \
                         / 1024 / 1024 ))
     # mount a tmpfs filesystem about 10% larger than the encrypted file
     local tmpfs_size=$(( $encf_size + $(( $encf_size / 10 )) ))
@@ -91,7 +93,7 @@ mount_tmpfs () {
 
 decrypt () {
     echo "Decrypting file..."
-    PLAIN_FILE="${TEMP_DIR}/file"
+    PLAIN_FILE="${TEMP_DIR}/file.tar"
     gpg2 -o ${PLAIN_FILE} ${ENCRYPTED_FILE} 2>&1 | sed 's/\n/\n    /'
     local decrypt_status=$?
     echo -e "\tdone"
@@ -107,6 +109,30 @@ write_checksum () {
     CHECKSUM_FILE="${TEMP_DIR}/checksum"
     echo -n "Writing checksum..."
     sha256sum ${PLAIN_FILE} > ${CHECKSUM_FILE}
+    echo -e "\tdone"
+}
+
+extract_tarball () {
+    CONTENTS_DIR="${TEMP_DIR}/contents"
+    echo -n "Extracting tarball..."
+    mkdir -p ${CONTENTS_DIR}
+    tar xf ${PLAIN_FILE} -C ${CONTENTS_DIR}
+    echo -e "\tdone"
+}
+
+start_subshell () {
+    echo "Starting Subshell..."
+    pushd ${CONTENTS_DIR} 2>&1 >/dev/null
+    /bin/bash
+    popd 2>&1 >/dev/null
+    echo "Subshell closed..."
+}
+
+recreate_tarball () {
+    echo -n "Recreating tarball..."
+    pushd ${CONTENTS_DIR} 2>&1 >/dev/null
+    tar cf ${PLAIN_FILE} *
+    popd 2>&1 >/dev/null
     echo -e "\tdone"
 }
 
