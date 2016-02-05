@@ -16,11 +16,11 @@
 
 SCRIPT=$0
 
-STATUS_FILE='./status.txt'
+STATUS_FILES='./status.txt ./done.txt'
 
 usage () {
     echo -e "$SCRIPT [-h|--help|-f|--file-presence|-c|--status-contents]\n"
-    local msg="Validate the contents of the ${STATUS_FILE} file compared to"
+    local msg="Validate the contents of the ${STATUS_FILES} file compared to"
     msg="${msg} the task files present on the filesystem."
     msg="${msg} The default behaviour is to execute all checks"
     msg="${msg} but can be overridden with one of the options."
@@ -29,7 +29,7 @@ usage () {
     echo "    -h|--help            : print this help message"
     echo "    -f|--file-presence   : Check that the sub-directories"
     echo "                           contain all task files."
-    echo "    -c|--status-contents : Check that ${STATUS_FILE} contains"
+    echo "    -c|--status-contents : Check that ${STATUS_FILES} contains"
     echo "                           references to all task files."
     exit 1;
 }
@@ -59,25 +59,25 @@ done
 RC=0
 
 if ! $FILE_PRESENCE; then
-    echo "Default Logic: checking that \"${STATUS_FILE}\" is complete..."
+    echo "Default Logic: checking that \"${STATUS_FILES}\" is complete..."
     IFS=$'\n'  # use newline delimiter instead of space
     task_dirs=$(find . -maxdepth 1 -type d|sed -e 's@./@@'|grep -v "\.")
     tasks=$(find $task_dirs -type f -not -iname ".*swp" | \
             sed -e 's@^./@@' -e 's@`<@@g' -e 's@>`_@@')
     missing=
     for task in ${tasks}; do
-        grep ${task} ${STATUS_FILE} -q
+        grep ${task} ${STATUS_FILES} -q
         if [[ "$?" -eq "0" ]]; then
             echo -n " ."
         else
-            missing="${missing}\"${task}\"...\tNO \"${STATUS_FILE}\" ENTRY"
+            missing="${missing}\n\"${task}\"...\tNO \"${STATUS_FILES}\" ENTRY"
             RC=1
         fi
     done
     echo -e "${missing}"
 else
-    echo "Reverse Logic: checking all files referenced in \"${STATUS_FILE}\" exist..."
-    tasks=$(grep "\`<" ${STATUS_FILE}|sed -e "s@^.*\`<@@" -e "s@>\`_.*\$@@")
+    echo "Reverse Logic: checking all files referenced in \"${STATUS_FILES}\" exist..."
+    tasks=$(grep "\`<" ${STATUS_FILES}|sed -e "s@^.*\`<@@" -e "s@>\`_.*\$@@")
     missing=""
     for task in ${tasks}; do
         if [[ -f $task ]]; then
