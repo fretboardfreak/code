@@ -2,7 +2,7 @@
 """
 """
 
-import sys, argparse
+import sys, argparse, os, subprocess
 
 
 VERSION = "0.0"
@@ -14,20 +14,33 @@ def main():
     args = parse_cmd_line()
     dprint(args)
     # get input file
+    verify_input_file(args.file)
+
     # change umask to 077 to use restricted file perms
-    # make temp directory
-    # mount tmpfs inside temp directory
-    # decrypt
-    # write checksum
-    # if tarball then
-    #     extract tarball
-    #     start subshell
-    #     recreate tarball
-    # else
-    #     edit plain file
-    # verify checksum
-    # reencrypt
-    # cleanup mountpoint and tmpdir
+    with Umask(77):
+        # make temp directory
+        temp_dir = tempfile.mkdtemp()
+        try:
+            pass
+            # mount tmpfs inside temp directory
+            # decrypt
+            # write checksum
+            # if tarball then
+            #     extract tarball
+            #     start subshell
+            #     recreate tarball
+            # else
+            #     edit plain file
+            # verify checksum
+            # reencrypt
+        finally:
+            # cleanup mountpoint and tmpdir
+            if subprocess.call(['rm', '-rf', temp_dir]) != 0:
+                raise CleanupError(
+                    'Failed to remove temporary directory: "{}" Please '
+                    'manually remove it to keep your data '
+                    'secure.'.format(temp_dir))
+
     # change umask back to original value
     return 0
 
@@ -43,6 +56,51 @@ def parse_cmd_line():
     parser.add_argument(dest='file', metavar='FILE',
                         help='The encrypted file to operate on.')
     return parser.parse_args()
+
+
+def verify_input_file(filename):
+    """Verify that the input file exists and is an encrypted PGP message."""
+    pass
+
+
+class CleanupError(Exception):
+    pass
+
+class UmaskError(Exception):
+    pass
+
+
+class Umask(object):
+    """A basic state manager for temporarily changing the umask."""
+    def __init__(self, new_umask=None):
+        self.original = None
+        self.new_umask = new_umask
+
+    def set(new_umask=None):
+        if new_umask is None and self.new_umask is None:
+            raise UmaskError(
+                'Cannot change umask: No temporary umask specified.')
+        elif new_umask is None and self.new_umask is not None:
+            tmp_umask = self.new_umask
+        elif new_umask is not None and self.new_umask is None:
+            tmp_umask = new_umask
+        else:
+            # new_umask takes precedent over self.new_umask when both present
+            tmp_umask = new_umask
+        vprint('Setting umask to "{}"'.format(tmp_umask))
+        self.original = os.umask(tmp_umask)
+
+    def restore(self):
+        if self.original is None:
+            vprint('No umask changes to restore.')
+        vprint('Restoring umask to "{}"'.format(self.original))
+        os.umask(self.original)
+
+    def __enter__(self):
+        self.set(new_umask)
+
+    def __exit__(self, *args):
+        self.restore()
 
 
 def dprint(msg):
