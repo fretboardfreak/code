@@ -58,16 +58,22 @@ def parse_cmd_line():
     return parser.parse_args()
 
 
-def verify_input_file(filename):
-    """Verify that the input file exists and is an encrypted PGP message."""
-    pass
-
-
 class CleanupError(Exception):
     pass
 
+
 class UmaskError(Exception):
     pass
+
+
+def verify_input_file(filename):
+    """Verify that the input file exists and is an encrypted PGP message."""
+    if not os.path.exists(filename):
+        raise FileNotFoundError('The file "{}" does not appear to '
+                                'exist.'.format(filename))
+    file_type_output = subprocess.check_output(['file', '--mime-type',
+                                                filename])
+    if "application/pgp" not in file_type_output.lower():
 
 
 class Umask(object):
