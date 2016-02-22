@@ -1,8 +1,32 @@
 #!/usr/bin/env python3
-"""
+
+# Copyright 2015 Curtis Sand
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""A script to simplify accessing GPG encrypted files and containers safely.
+
+The script will decrypt the encrypted file in a temporary, secure location on a
+fresh TMPFS mount. Then afterwards the script will reencrypt the contents and
+clean up any plain text secrets to minimize the exposure of your encrypted
+data.
 """
 
-import sys, argparse, os, subprocess
+import sys
+import argparse
+import os
+import subprocess
+import tempfile
 
 
 VERSION = "0.0"
@@ -17,30 +41,24 @@ def main():
     verify_input_file(args.file)
 
     # change umask to 077 to use restricted file perms
-    with Umask(77):
-        # make temp directory
-        temp_dir = tempfile.mkdtemp()
-        try:
-            pass
-            # mount tmpfs inside temp directory
-            # decrypt
-            # write checksum
-            # if tarball then
-            #     extract tarball
-            #     start subshell
-            #     recreate tarball
-            # else
-            #     edit plain file
-            # verify checksum
-            # reencrypt
-        finally:
-            # cleanup mountpoint and tmpdir
-            if subprocess.call(['rm', '-rf', temp_dir]) != 0:
-                raise CleanupError(
-                    'Failed to remove temporary directory: "{}" Please '
-                    'manually remove it to keep your data '
-                    'secure.'.format(temp_dir))
-
+    # make temp directory
+    # mount tmpfs inside temp directory
+    with Umask(77), \
+            tempfile.TemporaryDirectory() as temp_dir, \
+            Tmpfs(temp_dir, size=get_tmpfs_mount_size(args)):
+        print('Temp file created: {}'.format(temp_dir))
+        input('enter to continue')
+        # decrypt
+        # write checksum
+        # if tarball then
+        #     extract tarball
+        #     start subshell
+        #     recreate tarball
+        # else
+        #     edit plain file
+        # verify checksum
+        # reencrypt
+    # cleanup mountpoint and tmpdir
     # change umask back to original value
     return 0
 
@@ -58,14 +76,6 @@ def parse_cmd_line():
     return parser.parse_args()
 
 
-class CleanupError(Exception):
-    pass
-
-
-class UmaskError(Exception):
-    pass
-
-
 def verify_input_file(filename):
     """Verify that the input file exists and is an encrypted PGP message."""
     if not os.path.exists(filename):
@@ -73,7 +83,20 @@ def verify_input_file(filename):
                                 'exist.'.format(filename))
     file_type_output = subprocess.check_output(['file', '--mime-type',
                                                 filename])
-    if "application/pgp" not in file_type_output.lower():
+    if "application/pgp" not in str(file_type_output).lower():
+        raise FileTypeError('The given file does not appear to be a PGP '
+                            'encrypted message.')
+
+
+def get_tmpfs_mount_size(args):
+    """Determine an appropriate size for the TMPFS filesystem.
+
+    For a reasonable safety margin make the TMPFS mount 50% larger than the
+    encrypted payload itself. This should provide enough free space for new
+    content to be added to the payload before re-encryption.
+    """
+    file_size = os.path.getsize(args.file)
+    return 1.5 * file_size
 
 
 class Umask(object):
@@ -82,19 +105,9 @@ class Umask(object):
         self.original = None
         self.new_umask = new_umask
 
-    def set(new_umask=None):
-        if new_umask is None and self.new_umask is None:
-            raise UmaskError(
-                'Cannot change umask: No temporary umask specified.')
-        elif new_umask is None and self.new_umask is not None:
-            tmp_umask = self.new_umask
-        elif new_umask is not None and self.new_umask is None:
-            tmp_umask = new_umask
-        else:
-            # new_umask takes precedent over self.new_umask when both present
-            tmp_umask = new_umask
-        vprint('Setting umask to "{}"'.format(tmp_umask))
-        self.original = os.umask(tmp_umask)
+    def set(self):
+        vprint('Setting umask to "{}"'.format(self.new_umask))
+        self.original = os.umask(self.new_umask)
 
     def restore(self):
         if self.original is None:
@@ -103,10 +116,75 @@ class Umask(object):
         os.umask(self.original)
 
     def __enter__(self):
-        self.set(new_umask)
+        self.set()
 
     def __exit__(self, *args):
         self.restore()
+
+
+class Tmpfs(object):
+    """A context manager for mounting TMPFS filesystems."""
+    def __init__(self, mount_point, size=None):
+        if not os.path.exists(mount_point) and os.path.isdir(mount_point):
+            raise NotADirectoryError(
+                'The mount point "{}" does not appear to be a valid '
+                'directory. quitting.'.format(mount_point))
+        self.mount_point = mount_point
+
+        if size is None:
+            size = 1024 * 1024  # default size of 1Mb if not specified
+        elif isinstance(size, str):
+            size = Tmpfs.parse_string_size()
+        self.size = size
+
+    @classmethod
+    def parse_string_size(self, size):
+        si = {'k': 1024, 'm': 1024 * 1024, 'g': 1024 * 1024 * 1024}
+        if size[-1].isdigit():
+            return int(size)
+        try:
+            num = int(size[:-1])
+            return num * si[size[-1]]
+        except (KeyError, ValueError):
+            raise ValueError('Unable to parse "{}" into a valid file '
+                             'size.'.format(size))
+
+    def is_mounted(self):
+        output = subprocess.check_output(['mount'])
+        mounts = [line.decode().split(' ')[2] for line in output.splitlines()
+                  if line.decode().split(' ')[0] == 'tmpfs']
+        return self.mount_point in mounts
+
+    def mount(self):
+        vprint('Mounting TPMFS filesystem...')
+        dprint('TMPFS size: {}'.foramt(self.size))
+        rc = subprocess.check_call(['sudo', 'mount', '-t', 'tmpfs', '-o',
+                                    str(self.size), 'tmpfs', self.mount_point])
+        if rc:
+            raise TmpfsError('Failed to mount TMPFS filesystem of size {} at '
+                             'mount point "{}". The mount command returned '
+                             'rc={}.'.format(self.size, self.mount_point, rc))
+
+    def unmount(self):
+        vprint('Unmounting TMPFS filesystem...')
+
+    def __enter__(self):
+        self.mount()
+
+    def __exit__(self, *args):
+        self.unmount()
+
+
+class UmaskError(Exception):
+    pass
+
+
+class TmpfsError(Exception):
+    pass
+
+
+class FileTypeError(FileNotFoundError):
+    pass
 
 
 def dprint(msg):
