@@ -27,6 +27,8 @@ import argparse
 import os
 import subprocess
 import tempfile
+import hashlib
+import tarfile
 
 
 VERSION = "0.0"
@@ -36,30 +38,36 @@ DEBUG = False
 
 def main():
     args = parse_cmd_line()
-    dprint(args)
-    # get input file
     verify_input_file(args.file)
 
-    # change umask to 077 to use restricted file perms
-    # make temp directory
-    # mount tmpfs inside temp directory
-    with Umask(77), \
+    with Umask(0o77), \
             tempfile.TemporaryDirectory() as temp_dir, \
             Tmpfs(temp_dir, size=get_tmpfs_mount_size(args)):
-        print('Temp file created: {}'.format(temp_dir))
-        input('enter to continue')
-        # decrypt
-        # write checksum
-        # if tarball then
-        #     extract tarball
-        #     start subshell
-        #     recreate tarball
-        # else
-        #     edit plain file
-        # verify checksum
-        # reencrypt
-    # cleanup mountpoint and tmpdir
-    # change umask back to original value
+
+        plain_payload = os.path.join(temp_dir, 'payload')
+        Crypter.decrypt(args.file, plain_payload)
+
+        before_checksum = calculate_file_checksum(plain_payload)
+
+        tarball_extracted = extract_tarball_payload(plain_payload)
+
+        user_interactive_shell(temp_dir)
+
+        if tarball_extracted:
+            recreate_tarball_payload(plain_payload)
+
+        reencrypt = True
+        after_checksum = calculate_file_checksum(plain_payload)
+        if before_checksum == after_checksum:
+            reencrypt = False
+            answer = input('The checksum of the payload has not changed. '
+                           'Rencrypt anyways? (y/N) ')
+            if answer.strip().lower() in ['y', 'yes']:
+                reencrypt = True
+
+        if reencrypt:
+            Crypter.encrypt(plain_payload, args.file)
+
     return 0
 
 
@@ -91,12 +99,62 @@ def verify_input_file(filename):
 def get_tmpfs_mount_size(args):
     """Determine an appropriate size for the TMPFS filesystem.
 
-    For a reasonable safety margin make the TMPFS mount 50% larger than the
+    For a reasonable safety margin make the TMPFS mount double the size of the
     encrypted payload itself. This should provide enough free space for new
     content to be added to the payload before re-encryption.
     """
     file_size = os.path.getsize(args.file)
-    return 1.5 * file_size
+    dprint('payload size is %d' % file_size)
+    if file_size < 1024 * 1024:
+        # Don't bother with TMPFS less than 1Mb
+        mount_size = 1024 * 1024
+    else:
+        mount_size = 2 * file_size
+    dprint('tmpfs mount size will be %d' % mount_size)
+    return mount_size
+
+
+def user_interactive_shell(working_directory):
+    subprocess.call(['/bin/bash'], cwd=working_directory)
+
+
+def calculate_file_checksum(filepath):
+    """Calculate the SHA256 hash of the given file."""
+    checksum = hashlib.sha256()
+    with open(filepath, 'rb') as fin:
+        for line in fin:
+            checksum.update(line)
+    digest = checksum.hexdigest()
+    dprint('Checksum of {}: {}'.format(filepath, digest))
+    return digest
+
+
+def extract_tarball_payload(plain_payload):
+    if not tarfile.is_tarfile(plain_payload):
+        vprint('Not a tarball.')
+        return False
+    vprint('Extracting the tarball.')
+    tarball = tarfile.TarFile(plain_payload)
+
+    content = 'content'
+    content_dir = os.path.dirname(plain_payload)
+    if not (content in tarball.getnames() and
+            tarball.getmember(content).isdir()):
+        content_dir = os.path.join(os.path.dirname(plain_payload), content)
+        os.makedir(content_dir)
+
+    tarball.extractall(path=content_dir)
+    return True
+
+
+def recreate_tarball_payload(plain_payload):
+    backup = "{}_orig".format(plain_payload)
+    vprint('Backup original tarball to {}'.format(backup))
+    os.move(plain_payload, backup)
+    vprint('Rebuilding tarball {}'.format(plain_payload))
+    tarball = tarfile.TarFile(plain_payload)
+    tarball.add('content')
+    tarball.close()
 
 
 class Umask(object):
@@ -157,9 +215,11 @@ class Tmpfs(object):
 
     def mount(self):
         vprint('Mounting TPMFS filesystem...')
-        dprint('TMPFS size: {}'.foramt(self.size))
+        dprint('TMPFS size: {}'.format(self.size))
+        options = 'size=%d' % self.size
+        options += ',uid=%d,gid=%d' % (os.getuid(), os.getgid())
         rc = subprocess.check_call(['sudo', 'mount', '-t', 'tmpfs', '-o',
-                                    str(self.size), 'tmpfs', self.mount_point])
+                                    options, 'tmpfs', self.mount_point])
         if rc:
             raise TmpfsError('Failed to mount TMPFS filesystem of size {} at '
                              'mount point "{}". The mount command returned '
@@ -167,12 +227,45 @@ class Tmpfs(object):
 
     def unmount(self):
         vprint('Unmounting TMPFS filesystem...')
+        rc = subprocess.check_call(['sudo', 'umount', self.mount_point])
+        if rc:
+            raise TmpfsError(
+                'Failed to unmount the TMPFS filesystem. Please clean up '
+                'mount point {} manually.'.format(self.mount_point))
 
     def __enter__(self):
         self.mount()
 
     def __exit__(self, *args):
         self.unmount()
+
+
+class Crypter(object):
+
+    gpg = '/usr/bin/gpg2'
+
+    @classmethod
+    def decrypt(cls, payload, destination):
+        vprint('Decrypting payload')
+        cls._run([Crypter.gpg, '-o', destination, payload], 'decrypt')
+
+    @classmethod
+    def encrypt(cls, payload, destination):
+        vprint('Reencrpting payload')
+        cls._run([Crypter.gpg, '--encrypt', '--sign', '--armor',
+                  '--recipient', 'Curtis Sand', '-o', destination,
+                  '--yes', payload], 'encrypt')
+
+    @classmethod
+    def _run(cls, cmd, action_msg):
+        try:
+            dprint('executing command {}'.format(cmd))
+            subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+        except subprocess.CalledProcessError as error:
+            raise GpgError('Failed to {} payload: GPG returned error code {}.'
+                           '\nstderr>>>\n{}\n<<<stderr'.format(
+                               action_msg, error.returncode,
+                               error.output.decode().replace('\n', '\n    ')))
 
 
 class UmaskError(Exception):
@@ -184,6 +277,10 @@ class TmpfsError(Exception):
 
 
 class FileTypeError(FileNotFoundError):
+    pass
+
+
+class GpgError(Exception):
     pass
 
 
