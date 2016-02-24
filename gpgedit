@@ -31,7 +31,7 @@ import hashlib
 import tarfile
 
 
-VERSION = "0.0"
+VERSION = "1.0"
 VERBOSE = False
 DEBUG = False
 
@@ -129,6 +129,10 @@ def calculate_file_checksum(filepath):
     return digest
 
 
+def get_content_path(tarball_path):
+    return os.path.join(os.path.dirname(tarball_path), 'content')
+
+
 def extract_tarball_payload(plain_payload):
     if not tarfile.is_tarfile(plain_payload):
         vprint('Not a tarball.')
@@ -140,20 +144,21 @@ def extract_tarball_payload(plain_payload):
     content_dir = os.path.dirname(plain_payload)
     if not (content in tarball.getnames() and
             tarball.getmember(content).isdir()):
-        content_dir = os.path.join(os.path.dirname(plain_payload), content)
-        os.makedir(content_dir)
+        content_dir = get_content_path(plain_payload)
+        os.mkdir(content_dir)
 
     tarball.extractall(path=content_dir)
     return True
 
 
 def recreate_tarball_payload(plain_payload):
-    backup = "{}_orig".format(plain_payload)
-    vprint('Backup original tarball to {}'.format(backup))
-    os.move(plain_payload, backup)
+    vprint('Remove original tarball')
+    os.remove(plain_payload)
+
     vprint('Rebuilding tarball {}'.format(plain_payload))
-    tarball = tarfile.TarFile(plain_payload)
-    tarball.add('content')
+    content = get_content_path(plain_payload)
+    tarball = tarfile.TarFile(plain_payload, mode='w')
+    tarball.add(content, arcname='content')
     tarball.close()
 
 
