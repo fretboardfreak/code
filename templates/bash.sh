@@ -10,13 +10,10 @@ usage () {
 # Options with no args have no colon
 # Option with required arg has 1 colon
 # Option with optional arg has 2 colons
-ARGS=`getopt -o "h" -l "help" -n "template.sh" -- "$@"`
-if [ $? -ne 0 ]; then
-    # bad arguments found
-    exit 1;
-fi
-eval set -- "$ARGS"
+ARGS=$(getopt -o "h" -l "help" -n $SCRIPT -- "$@")
+[ $? -ne 0 ] && usage # bad arguments found
 
+eval set -- "$ARGS"
 while true ; do
     case "$1" in
         -h|--help) usage ; shift ;;
