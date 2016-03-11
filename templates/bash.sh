@@ -4,14 +4,16 @@ SCRIPT=$0
 
 usage () {
     echo "$SCRIPT [-h|--help]";
-    exit 1;
+    local rc=0
+    [ -n "$1" ] && rc=$1
+    exit $rc
 }
 
 # Options with no args have no colon
 # Option with required arg has 1 colon
 # Option with optional arg has 2 colons
 ARGS=$(getopt -o "h" -l "help" -n $SCRIPT -- "$@")
-[ $? -ne 0 ] && usage # bad arguments found
+[ $? -ne 0 ] && usage 1  # bad arguments found
 
 eval set -- "$ARGS"
 while true ; do
