@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
-"""A Sandbox Script to allow me to play with and learn the SQALchemy Tools."""
+"""A Sandbox Script to allow me to play with and learn the SQALchemy Tools.
+
+Go to http://docs.sqlalchemy.org for more info.
+"""
 
 import sys, argparse, os, random, sqlite3
 from collections import OrderedDict
 
 try:
-    import sqlalchemy as sqla
+    import sqlalchemy
     from sqlalchemy.ext.declarative import declarative_base
 except ImportError:
     print('Error: Cannot Import SQLAlchemy', file=sys.stderr)
@@ -30,10 +33,10 @@ def main():
         datastore.create_tables([Coord])
 
     # Verify that we have some Coordinate data to play with
-    count = len(session.query(Coord).all())
+    count = session.query(Coord).count()
     print('{} Coord objects present, adding {} new coords.'.format(
         count, 10 - count))
-    while len(session.query(Coord).all()) < 10:
+    while session.query(Coord).count() < 10:
         session.add(Coord.generate_random())
         session.commit()
 
@@ -99,15 +102,20 @@ class BaseTable(object):
             attrs=', '.join(['{key}={val}'.format(key=key, val=val)
                             for key, val in self.columns.items()]))
 
+DeclarativeBase = declarative_base()
 
-class Coord(BaseTable, declarative_base()):
-    __tablename__ = 'coords'
 
-    id = sqla.Column(sqla.Integer, primary_key=True)
-    sector_x = sqla.Column(sqla.Integer)
-    sector_y = sqla.Column(sqla.Integer)
-    system_x = sqla.Column(sqla.Integer)
-    system_y = sqla.Column(sqla.Integer)
+class Coord(BaseTable, DeclarativeBase):
+    __tablename__ = 'coord'
+
+    id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
+    sector_x = sqlalchemy.Column(sqlalchemy.Integer)
+    sector_y = sqlalchemy.Column(sqlalchemy.Integer)
+    system_x = sqlalchemy.Column(sqlalchemy.Integer)
+    system_y = sqlalchemy.Column(sqlalchemy.Integer)
+
+    system = sqlalchemy.orm.relationship(
+        "System", uselist=False, back_populates="coord")
 
     @property
     def columns(self):
@@ -125,6 +133,25 @@ class Coord(BaseTable, declarative_base()):
                      system_y=random.randint(*coord_range))
 
 
+class System(BaseTable, DeclarativeBase):
+    __tablename__ = 'system'
+
+    id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
+    size = sqlalchemy.Column(sqlalchemy.Integer)
+    sun_brightness = sqlalchemy.Column(sqlalchemy.Integer)
+
+    coord_id = sqlalchemy.Column(sqlalchemy.Integer,
+                                 sqlalchemy.ForeignKey('coord.id'))
+
+    coord = sqlalchemy.orm.relationship("Coord", back_populates="system")
+
+    @property
+    def columns(self):
+        return OrderedDict([('coord_id', self.coord_id),
+                            ('coord', self.coord), ('size', self.size),
+                            ('sun_brightness', self.sun_brightness)])
+
+
 class Datastore(object):
     def __init__(self, database, db_echo=False):
         self.database = database
@@ -136,10 +163,10 @@ class Datastore(object):
 
     def connect(self):
         if self.engine is None:
-            self.engine = sqla.create_engine(
+            self.engine = sqlalchemy.create_engine(
                 'sqlite:///{}'.format(self.database), echo=self.db_echo)
         if self.session_type is None:
-            self.session_type = sqla.orm.sessionmaker(bind=self.engine)
+            self.session_type = sqlalchemy.orm.sessionmaker(bind=self.engine)
         self.session = self.session_type()
         self.closed = False
         return self.session
@@ -159,7 +186,7 @@ class Datastore(object):
 
     @property
     def tables(self):
-        inspector = sqla.inspect(self.engine)
+        inspector = sqlalchemy.inspect(self.engine)
         return inspector.get_table_names()
 
     def table_exists(self, table):
