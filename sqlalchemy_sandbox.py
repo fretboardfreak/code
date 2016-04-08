@@ -23,29 +23,31 @@ def main():
     args = parse_cmd_line()
     vprint(args)
 
-    datastore = Datastore(args.database, db_echo=args.verbose_db)
-    session = datastore.connect()
+    schema = SpaceSchema(args.database, verbose=args.verbose_db)
+    schema.open()
 
-    # Check table presence. Create any missing tables.
-    print('Existing Tables: {}'.format(datastore.tables))
-    if not datastore.tables_exist([Coord]):
-        print('Required tables not present, creating them.')
-        datastore.create_tables([Coord])
+    try:
+        schema.verify()
+    except SchemaError as schema_err:
+        print(schema_err.msg, file=sys.stderr)
+        print('Attempting to Create the DB Schema...', file=sys.stderr)
+        schema.create()
 
-    # Verify that we have some Coordinate data to play with
-    count = session.query(Coord).count()
-    print('{} Coord objects present, adding {} new coords.'.format(
-        count, 10 - count))
-    while session.query(Coord).count() < 10:
-        session.add(Coord.generate_random())
-        session.commit()
+    print('There are {} Coord rows in the database.'.format(
+          schema.coord.count()))
 
-    # Print the contents of the database
-    print('Coord objects in the database.')
-    for coord in session.query(Coord).all():
+    if schema.coord.count() < 10:
+        print('Creating some Coords...')
+        schema.create_random_coords(10)
+
+    print('The Coord objects are:')
+    for coord in schema.coord.all():
         print(coord)
 
-    datastore.close()
+    print('There are {} System rows in the database.'.format(
+          schema.system.count()))
+
+    schema.close()
     return 0
 
 
@@ -102,6 +104,7 @@ class BaseTable(object):
             attrs=', '.join(['{key}={val}'.format(key=key, val=val)
                             for key, val in self.columns.items()]))
 
+
 DeclarativeBase = declarative_base()
 
 
@@ -151,6 +154,12 @@ class System(BaseTable, DeclarativeBase):
                             ('coord', self.coord), ('size', self.size),
                             ('sun_brightness', self.sun_brightness)])
 
+    @classmethod
+    def generate_random(self, coord):
+        return System(size=random.randint(1, 20),
+                      sun_brightness=random.randint(100, 1000),
+                      coord_id=coord.id)
+
 
 class Datastore(object):
     def __init__(self, database, db_echo=False):
@@ -195,10 +204,91 @@ class Datastore(object):
     def tables_exist(self, tables):
         return all(tbl.__tablename__ in self.tables for tbl in tables)
 
-    def create_tables(self, tables):
-        for table in tables:
-            if not self.table_exists(table):
-                table.metadata.create_all(self.engine)
+
+class SchemaError(Exception):
+    pass
+
+
+class Schema(object):
+    def __init__(self, datastore, declarative_base, tables):
+        self._declarative_base_table = declarative_base
+        self.datastore = datastore
+        self.tables = tables
+
+    def connect(self):
+        self.datastore.connect()
+
+    def close(self):
+        self.datastore.close()
+
+    def __enter__(self):
+        self.connect()
+        return self
+
+    def __exit__(self, *args, **kwargs):
+        self.close()
+
+    @property
+    def query(self):
+        return self.datastore.session.query
+
+    @property
+    def add(self):
+        return self.datastore.session.add
+
+    def commit(self):
+        self.datastore.session.commit()
+
+    def create(self):
+        self._declarative_base_table.metadata.create_all(self.datastore.engine)
+
+    def verify(self):
+        missing_tables = []
+        for table in self.tables:
+            if not self.datastore.table_exists(table):
+                missing_tables.append(table.__tablename__)
+        if missing_tables:
+            raise SchemaError('The DB File appears to be missing the '
+                              'following tables: {}'.format(
+                                  ', '.join(missing_tables)))
+
+
+class SpaceSchema(Schema):
+    def __init__(self, database, verbose=None):
+        tables = [Coord, System]
+        super(SpaceSchema, self).__init__(Datastore(database, db_echo=verbose),
+                                          DeclarativeBase, tables)
+    @property
+    def coord(self):
+        return self.query(Coord)
+
+    @property
+    def system(self):
+        return self.query(System)
+
+    def create_random_coords(self, minimum_count=10):
+        """Generate Random Coord objects and add them to the database."""
+        while self.coord.count() < minimum_count:
+            self.add(Coord.generate_random())
+        self.commit()
+
+    def create_systems(self, coords):
+        """Create a System object for each given Coord object."""
+        try:
+            for coord in coords:
+                self.add(System.generate_random(coord))
+            self.commit()
+        except TypeError:  # coords is not iterable, assume single coord
+            self.add(System.generate_random(coord))
+            self.commit()
+
+    def unlinked_coords(self):
+        """Return the Coord objects that are not used in the rest of the model.
+
+        Coord objects only need to exist in the DB when linked to one of the
+        other game objects.
+        """
+        pass
 
 
 if __name__ == '__main__':
