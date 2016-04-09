@@ -23,15 +23,15 @@ def main():
     args = parse_cmd_line()
     vprint(args)
 
-    schema = SpaceSchema(args.database, verbose=args.verbose_db)
+    schema = SpaceDatastore(args.database, verbose=args.verbose_db)
     schema.open()
 
     try:
-        schema.verify()
-    except SchemaError as schema_err:
-        print(schema_err.msg, file=sys.stderr)
+        schema.verify_tables()
+    except DatastoreError as datastore_err:
+        print(datastore_err.msg, file=sys.stderr)
         print('Attempting to Create the DB Schema...', file=sys.stderr)
-        schema.create()
+        schema.create_tables()
 
     print('There are {} Coord rows in the database.'.format(
           schema.coord.count()))
@@ -105,6 +105,10 @@ class BaseTable(object):
                             for key, val in self.columns.items()]))
 
 
+class DatastoreError(Exception):
+    pass
+
+
 DeclarativeBase = declarative_base()
 
 
@@ -161,9 +165,18 @@ class System(BaseTable, DeclarativeBase):
                       coord_id=coord.id)
 
 
+class Planet(BaseTable, DeclarativeBase):
+    __tablename__ = 'planet'
+
+    id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
+    name = sqlalchemy.Column(sqlalchemy.String)
+    orbit = sqlalchemy.Column(sqlalchemy.Integer)
+
+
 class Datastore(object):
-    def __init__(self, database, db_echo=False):
+    def __init__(self, database, declarative_base, db_echo=False):
         self.database = database
+        self._declarative_base_table = declarative_base
         self.db_echo = db_echo
         self.closed = True
         self.engine = None
@@ -194,6 +207,17 @@ class Datastore(object):
         self.close()
 
     @property
+    def query(self):
+        return self.session.query
+
+    @property
+    def add(self):
+        return self.session.add
+
+    def commit(self):
+        self.session.commit()
+
+    @property
     def tables(self):
         inspector = sqlalchemy.inspect(self.engine)
         return inspector.get_table_names()
@@ -204,60 +228,24 @@ class Datastore(object):
     def tables_exist(self, tables):
         return all(tbl.__tablename__ in self.tables for tbl in tables)
 
+    def create_tables(self):
+        self._declarative_base_table.metadata.create_all(self.engine)
 
-class SchemaError(Exception):
-    pass
-
-
-class Schema(object):
-    def __init__(self, datastore, declarative_base, tables):
-        self._declarative_base_table = declarative_base
-        self.datastore = datastore
-        self.tables = tables
-
-    def connect(self):
-        self.datastore.connect()
-
-    def close(self):
-        self.datastore.close()
-
-    def __enter__(self):
-        self.connect()
-        return self
-
-    def __exit__(self, *args, **kwargs):
-        self.close()
-
-    @property
-    def query(self):
-        return self.datastore.session.query
-
-    @property
-    def add(self):
-        return self.datastore.session.add
-
-    def commit(self):
-        self.datastore.session.commit()
-
-    def create(self):
-        self._declarative_base_table.metadata.create_all(self.datastore.engine)
-
-    def verify(self):
+    def verify_tables(self):
         missing_tables = []
-        for table in self.tables:
-            if not self.datastore.table_exists(table):
+        for table in [Coord, System]:
+            if not self.table_exists(table):
                 missing_tables.append(table.__tablename__)
         if missing_tables:
-            raise SchemaError('The DB File appears to be missing the '
+            raise DatastoreError('The DB File appears to be missing the '
                               'following tables: {}'.format(
                                   ', '.join(missing_tables)))
 
 
-class SpaceSchema(Schema):
+class SpaceDatastore(Datastore):
     def __init__(self, database, verbose=None):
-        tables = [Coord, System]
-        super(SpaceSchema, self).__init__(Datastore(database, db_echo=verbose),
-                                          DeclarativeBase, tables)
+        super(SpaceDatastore, self).__init__(database, DeclarativeBase,
+                                             db_echo=verbose)
     @property
     def coord(self):
         return self.query(Coord)
