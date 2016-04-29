@@ -24,7 +24,7 @@ clip_length = 1  # seconds
 
 # Sine Wave Normalized between amplitude -1 and 1
 # The stereo tracks are duplicated to simulate mono
-frequency = 480  # Hz
+frequency = 440  # Hz (Concert Pitch A4)
 framecount = framerate * clip_length
 wavedata = numpy.ndarray((framecount, channels))
 for frame in range(framecount):
