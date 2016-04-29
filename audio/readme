@@ -1,0 +1,21 @@
+=================
+Audio Programming
+=================
+
+*Copyright 2016*
+
+:author: Curtis Sand
+:date: 160429
+
+Description
+===========
+
+A directory containing my first foray into programming for audio.
+
+Dependencies
+============
+
+The "scikits.audiolab" python library requires the "libsndfile" C library be
+installed on the OS.
+
+.. EOF README
