@@ -15,7 +15,15 @@ A directory containing my first foray into programming for audio.
 Dependencies
 ============
 
-The "scikits.audiolab" python library requires the "libsndfile" C library be
-installed on the OS.
+*Tested on Fedora 23 only; your mileage may vary.*
+
+``scikits.audiolab`` requires:
+
+- libsndfile-devel
+
+``matplotlib`` requires:
+
+- libpng-devel
+- freetype-devel
 
 .. EOF README
