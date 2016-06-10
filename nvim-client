@@ -69,7 +69,10 @@ if '-f' in sys.argv and len(new_buffers) > 0:
     #  * Clear the autocmds we added, since `bdelete` just hides the buffer and
     #    the autocmds will still be active if the user reopens the file(s).
     #  * Delete each of the buffers we created.
-    nvim.command('argdel *')
-    for buffer in new_buffers:
-        nvim.command('autocmd! BufDelete,BufHidden <buffer=%d>' % buffer)
-        nvim.command('bdelete! %d' % buffer)
+    try:
+        nvim.command('argdel *')
+        for buffer in new_buffers:
+            nvim.command('autocmd! BufDelete,BufHidden <buffer=%d>' % buffer)
+            nvim.command('bdelete! %d' % buffer)
+    except Exception as exc:
+        print('Problem occurred during buffer cleanup:\n{}'.format(exc))
