@@ -17,7 +17,7 @@
 # TODO: add a "-c|--clean" option that will check for and remove obsolete
 #       switch files.
 
-CMD=$@
+CMD=$1
 
 # Use a tmp file as an on/off switch
 SWITCH="/tmp/dowhile.$$"
@@ -31,6 +31,7 @@ count=0
 while [ -f $SWITCH ]; do
     $CMD
     count=$((count + 1))
-    echo "starting cycle $count..."
+    echo "starting cycle $count"
+    echo "  $CMD"
     sleep 1;
 done
