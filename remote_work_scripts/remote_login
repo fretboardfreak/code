@@ -1,0 +1,3 @@
+#!/bin/bash
+
+ssh -l sandc3 $(cat ~/bin/sandc3-u12-ip)
