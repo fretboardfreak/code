@@ -14,27 +14,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-""" A super basic flask app
-"""
-from flask import (Flask, render_template, redirect, request, url_for,
-                   Markup, make_response)
-
-import os
-
-app = Flask(__name__)
-#app.secret_key = 'foobarbaz'
+"""A super basic flask application."""
+from flask import Flask
+from flask import Markup
 
 
-def _formVal(field, default=None):
-    if request.form.has_key(field):
-        return request.form[field]
-    if not default:
-        default = ''
-    return default
+APP = Flask(__name__)
 
-@app.route('/')
+
+@APP.route('/')
 def index():
+    """A simple Hello World view method."""
     return Markup("<html>Hello World<html>")
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    APP.run(debug=True)
