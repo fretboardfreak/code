@@ -22,7 +22,7 @@ build () {
         die 1 "Build Path must be a directory."
     fi
     echo "Building Cscope for '$BUILD_PATH'"
-    find $BUILD_PATH -iname "*.py" -o -iname "*.java" -o -iname "*.[ch]" \
+    find $BUILD_PATH -iname "*.java" -o -iname "*.[ch]" \
                      -o -iname "*.cpp" -o -iname "*.cc" \
                      -o -iname "*.hpp" > $BUILD_PATH/cscope.files
     cscope -b -R -q -i $BUILD_PATH/cscope.files -f $BUILD_PATH/cscope.out
