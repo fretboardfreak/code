@@ -18,6 +18,7 @@ STYLESHEET="${HOME}/code/css/fret.css"
 SUFFIX="rst"
 RST_OPTS="--cloak-email-addresses --embed-stylesheet"
 RST2HTML=$(which rst2html.py)
+CLEAN=false
 
 usage () {
     echo "$SCRIPT [options] TOP_DIR";
@@ -32,12 +33,13 @@ usage () {
     echo "                   Note; stylesheets are customized using "
     echo "                         the -s|--stylesheet flag."
     echo "                   [Default: $RST_OPTS]"
+    echo "  -c|--clean          Clean up the md5 and html files in the target."
     local rc=0
     [ -n "$1" ] && rc=$1
     exit $rc
 }
 
-ARGS=$(getopt -o "hs:" -l "help,stylesheet:,suffix:,rst-options:" -n $SCRIPT -- "$@")
+ARGS=$(getopt -o "hs:c" -l "help,stylesheet:,suffix:,rst-options:,clean" -n $SCRIPT -- "$@")
 [ $? -ne 0 ] && usage 1  # bad arguments found
 
 eval set -- "$ARGS"
@@ -47,6 +49,7 @@ while true ; do
         -s|--stylesheet) STYLESHEET="$2" ; shift 2 ;;
         --suffix) SUFFX="$2" ; shift 2 ;;
         --rst-options) RST_OPTS="$2"; shift 2 ;;
+        -c|--clean) CLEAN=true; shift;;
         --) shift ; break ;;
         *) echo "Internal error!" ; exit 1 ;;
     esac
@@ -91,6 +94,13 @@ build_page () {
     [ $? -eq 0 ] && checksum $1
     BUILT="$BUILT\n  $1"
 }
+
+if $CLEAN ; then
+    echo "Cleaning MD5 and HTML files from \"$REPO\""
+    find $REPO -iname "*md5" -or -iname "*html" | xargs rm
+    echo "... cleaning complete."
+    exit 0;
+fi
 
 for file in $FILE_LIST; do
     build_page $file
