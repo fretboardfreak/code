@@ -20,11 +20,13 @@ VERBOSE = False
 DEBUG = False
 
 
-def build_rsync_command(source, dest, host, excludes=None):
+def build_rsync_command(source, dest, host, excludes=None, delete=True):
     if not excludes:
         excludes = []
     command = ['rsync', '--inplace', '-ha',
-               '--info=progress2', '--delete-after']
+               '--info=progress2']
+    if delete:
+        command.append('--delete')
     for pattern in excludes:
         command.append('--exclude')
         command.append(pattern)
@@ -55,13 +57,15 @@ def main():
         # dest path should have a trailing '/'
         dest_path = parent if parent.endswith('/') else parent + '/'
         excludes = cfg.rsync_excludes if not args.no_excludes else []
+        delete = not args.no_delete
         for hostname in cfg.hosts:
             print('Transfering "%s" to "%s" on %s...' %
                   (source_path, dest_path, hostname))
-            command = build_rsync_command(source_path, dest_path,
-                                          cfg.hosts[hostname], excludes)
+            command = build_rsync_command(
+                source_path, dest_path, cfg.hosts[hostname], excludes, delete)
             dprint('Running command: %s' % ' '.join(command))
-            # subprocess.call(command, stderr=subprocess.PIPE)
+            if not args.dry_run:
+                subprocess.call(command, stderr=subprocess.PIPE)
 
     return 0
 
@@ -113,6 +117,9 @@ class CommandParser(object):
             version='%(prog)s {}'.format(VERSION))
         DebugAction.add_parser_argument(self.arg_parser)
         VerboseAction.add_parser_argument(self.arg_parser)
+        self.arg_parser.add_argument(
+            '-n', '--dry-run', action='store_true', dest='dry_run',
+            help="Print full output but do not run rsync.")
         self.arg_parser.add_argument(dest='dir', metavar='DIR', nargs='*')
         self.arg_parser.add_argument(
             '-c', '--config', action='store', dest='config', metavar='CONFIG',
@@ -121,8 +128,12 @@ class CommandParser(object):
         self.arg_parser.add_argument(
             '--no-excludes', dest='no_excludes', action='store_true',
             help="Don't use the rsync excludes option from the config file.")
+        self.arg_parser.add_argument(
+            '--no-delete', dest='no_delete', action='store_true',
+            help="Don't include the --delete option in the rsync commands.")
         self.arg_parser.set_defaults(dir=[os.environ.get('HOME', '')],
-                                     config=None, no_excludes=False)
+                                     config=None, no_excludes=False,
+                                     no_delete=False, dry_run=False)
 
     def parse(self):
         self.add_options()
