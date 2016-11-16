@@ -366,6 +366,9 @@ code {
   border-radius: 4px;
   font-family: monospace;
 }
+ul code, ol code, ul pre, ol pre {
+  text-indent: 0;
+}
 pre > code {
   display: block;
   padding: 1rem 1.5rem;
