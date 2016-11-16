@@ -320,23 +320,25 @@ ul ul,
 ul ol,
 ol ol,
 ol ul {
-  margin: 1.5rem 0 1.5rem 3rem;
-  font-size: 90%; }
+  margin: 1rem 0 1rem 1rem;
+  font-size: 93%; }
 li {
-  margin-bottom: 1rem; }
+  margin-bottom: 1rem;
+}
 dt code {
-        font-weight: bold;
+  font-weight: bold;
 }
 dd p {
-        margin-top: 0;
+  margin-top: 0;
 }
 dl, dt {
   margin-left:0em;
   padding:0em;
 }
 ul, ol, li, dd {
-  margin-left:1em;
-  padding:0em;
+  margin-left: 1em;
+  text-indent: -1.8em;
+  padding: 0em;
 }
 ol.simple, ul.simple {
   margin-bottom: 0em; }
