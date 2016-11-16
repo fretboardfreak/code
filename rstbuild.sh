@@ -14,7 +14,7 @@
 # limitations under the License.
 SCRIPT=$0
 
-STYLESHEET="${HOME}/code/css/rstskel.css"
+STYLESHEET="${HOME}/code/css/rstskel.css,${HOME}/code/css/normalize.css"
 SUFFIX="rst"
 RST_OPTS="--cloak-email-addresses --embed-stylesheet"
 RST2HTML=$(which rst2html.py)
@@ -47,7 +47,7 @@ while true ; do
     case "$1" in
         -h|--help) usage ; shift ;;
         -s|--stylesheet) STYLESHEET="$2" ; shift 2 ;;
-        --suffix) SUFFX="$2" ; shift 2 ;;
+        --suffix) SUFFIX="$2" ; shift 2 ;;
         --rst-options) RST_OPTS="$2"; shift 2 ;;
         -c|--clean) CLEAN=true; shift;;
         --) shift ; break ;;
