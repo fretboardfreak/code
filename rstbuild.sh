@@ -14,7 +14,7 @@
 # limitations under the License.
 SCRIPT=$0
 
-STYLESHEET="${HOME}/code/css/fret.css"
+STYLESHEET="${HOME}/code/css/rstskel.css"
 SUFFIX="rst"
 RST_OPTS="--cloak-email-addresses --embed-stylesheet"
 RST2HTML=$(which rst2html.py)
