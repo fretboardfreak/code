@@ -20,16 +20,19 @@ VERBOSE = False
 DEBUG = False
 
 
-def build_rsync_command(source, dest, host, excludes=None, delete=True):
+def build_rsync_command(source, dest, host, excludes=None, delete=True,
+                        output_flags=None):
     if not excludes:
         excludes = []
-    command = ['rsync', '--inplace', '-ha',
-               '--info=progress2']
+    if not output_flags:
+        output_flags = []
+    command = ['rsync', '--inplace', '-ha']
     if delete:
         command.append('--delete')
     for pattern in excludes:
         command.append('--exclude')
         command.append(pattern)
+    command.extend(output_flags)
 
     command.append(source)
     full_dest = "%s:%s" % (host, dest)
@@ -62,7 +65,8 @@ def main():
             print('Transfering "%s" to "%s" on %s...' %
                   (source_path, dest_path, hostname))
             command = build_rsync_command(
-                source_path, dest_path, cfg.hosts[hostname], excludes, delete)
+                source_path, dest_path, cfg.hosts[hostname], excludes, delete,
+                cfg.rsync_output_flags)
             dprint('Running command: %s' % ' '.join(command))
             if not args.dry_run:
                 subprocess.call(command, stderr=subprocess.PIPE)
@@ -101,6 +105,14 @@ class Config(object):
     @property
     def rsync_excludes(self):
         sect, opt = 'rsync_opts', 'excludes'
+        if (not self._parser.has_section(sect)
+                or opt not in self._parser.options(sect)):
+            return []
+        return self._parser.get(sect, opt).split(' ')
+
+    @property
+    def rsync_output_flags(self):
+        sect, opt = 'rsync_opts', 'output_flags'
         if (not self._parser.has_section(sect)
                 or opt not in self._parser.options(sect)):
             return []
