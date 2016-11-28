@@ -20,14 +20,14 @@ VERBOSE = False
 DEBUG = False
 
 
-def build_rsync_command(source, dest, host, excludes=None, delete=True,
+def build_rsync_command(source, dest, host, excludes=None, erase=True,
                         output_flags=None):
     if not excludes:
         excludes = []
     if not output_flags:
         output_flags = []
     command = ['rsync', '--inplace', '-ha']
-    if delete:
+    if erase:
         command.append('--delete')
     for pattern in excludes:
         command.append('--exclude')
@@ -38,6 +38,16 @@ def build_rsync_command(source, dest, host, excludes=None, delete=True,
     full_dest = "%s:%s" % (host, dest)
     command.append(full_dest)
     return command
+
+
+def sanitize_source(path):
+    """Ensure the source does not have a trailing /"""
+    return path[:-1] if path.endswith('/') else path
+
+
+def sanitize_dest(path):
+    """Ensure the destination does have a trailing /"""
+    return path if path.endswith('/') else path + '/'
 
 
 def main():
@@ -54,19 +64,19 @@ def main():
                   argument)
             continue
         argument = os.path.abspath(os.path.relpath(argument))
-        # source path should have no trailing '/'
-        source_path = argument[:-1] if argument.endswith('/') else argument
-        parent, _ = os.path.split(source_path)
-        # dest path should have a trailing '/'
-        dest_path = parent if parent.endswith('/') else parent + '/'
+        source_path = sanitize_source(argument)
+        if not args.dest:
+            parent, _ = os.path.split(source_path)
+            dest_path = sanitize_dest(parent)
+        else:
+            dest_path = args.dest
         excludes = cfg.rsync_excludes if not args.no_excludes else []
-        delete = not args.no_delete
         for hostname in cfg.hosts:
             print('Transfering "%s" to "%s" on %s...' %
                   (source_path, dest_path, hostname))
             command = build_rsync_command(
-                source_path, dest_path, cfg.hosts[hostname], excludes, delete,
-                cfg.rsync_output_flags)
+                source_path, dest_path, cfg.hosts[hostname], excludes,
+                args.erase, cfg.rsync_output_flags)
             dprint('Running command: %s' % ' '.join(command))
             if not args.dry_run:
                 subprocess.call(command, stderr=subprocess.PIPE)
@@ -141,14 +151,21 @@ class CommandParser(object):
             '--no-excludes', dest='no_excludes', action='store_true',
             help="Don't use the rsync excludes option from the config file.")
         self.arg_parser.add_argument(
-            '--no-delete', dest='no_delete', action='store_true',
-            help="Don't include the --delete option in the rsync commands.")
+            '-e', '--erase', dest='erase', action='store_true',
+            help="Include the --erase option in the rsync commands.")
+        self.arg_parser.add_argument(
+            '-D', '--dest', dest='dest', metavar="DESTINATION",
+            help=("Specify an alternate destination path. Otherwise the "
+                  "same source path is used on each host destination."))
+
+    def set_defaults(self):
         self.arg_parser.set_defaults(dir=[os.environ.get('HOME', '')],
                                      config=None, no_excludes=False,
-                                     no_delete=False, dry_run=False)
+                                     erase=False, dry_run=False, dest=None)
 
     def parse(self):
         self.add_options()
+        self.set_defaults()
         return self.arg_parser.parse_args()
 
 
