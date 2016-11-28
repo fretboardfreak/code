@@ -13,6 +13,7 @@ import argparse
 import enum
 import subprocess
 import configparser
+import re
 
 
 VERSION = "0.1"
@@ -21,7 +22,7 @@ DEBUG = False
 
 
 def build_rsync_command(source, dest, host, excludes=None, erase=True,
-                        output_flags=None):
+                        output_flags=None, reverse=False):
     if not excludes:
         excludes = []
     if not output_flags:
@@ -34,8 +35,13 @@ def build_rsync_command(source, dest, host, excludes=None, erase=True,
         command.append(pattern)
     command.extend(output_flags)
 
-    command.append(source)
-    full_dest = "%s:%s" % (host, dest)
+    if reverse:
+        full_source = "%s:%s" % (host, source)
+        full_dest = dest
+    else:
+        full_source = source
+        full_dest = "%s:%s" % (host, dest)
+    command.append(full_source)
     command.append(full_dest)
     return command
 
@@ -50,33 +56,81 @@ def sanitize_dest(path):
     return path if path.endswith('/') else path + '/'
 
 
+def match_host(match_string, config):
+    sane_stub = match_string.lower()
+    for index, hostname in config.iter_hosts():
+        sane_hostname = hostname.lower()
+        if (re.search(sane_stub, str(index))
+                or re.search(sane_stub, sane_hostname)):
+            return hostname
+
+
 def main():
+    # Parse command line arguments
     command_parser = CommandParser()
     args = command_parser.parse()
     dprint(args)
 
+    # Load the configuration file
     cfg = Config(filename=args.config)
     cfg.load()
 
-    for argument in args.dir:
+    # Perform the list hosts action and exit if the option is present
+    if args.list_hosts:
+        print("Hosts in config: '%s'" % cfg.filename)
+        for index, hostname in cfg.iter_hosts():
+            print("  %s. %s: %s" % (index, hostname, cfg.hosts[hostname]))
+        return 0
+
+    # Find appropriate defaults if they are not specified
+    if not args.dir:
+        if not args.reverse:
+            dir_arg = cfg.defaults_dir
+            if not args.dest:
+                dest_arg = cfg.defaults_dest
+            host_arg = args.host
+        else:
+            dir_arg = cfg.reverse_defaults_dir
+            if not args.dest:
+                dest_arg = cfg.reverse_defaults_dest
+            if not args.host:
+                host_arg = cfg.reverse_defaults_host
+    else:
+        dir_arg = args.dir
+        dest_arg = args.dest
+        host_arg = args.host
+
+    # determine the host destinations for the transfer
+    hosts = sorted(cfg.hosts.keys())
+    if host_arg:
+        hosts = [match_host(host_arg, cfg)]
+    if args.reverse and len(hosts) != 1:
+        print('Cannot reverse transfer direction for multiple hosts. '
+              'Please specify a single host using "-H" an try again.')
+        return 1
+
+    dprint('{dir_arg: %s, dest_arg: %s, hosts: %s}' % (dir_arg, dest_arg, hosts))
+
+    # For each path, and each host perform the transfer
+    for argument in dir_arg:
         if not os.path.exists(argument):
             print('Path "%s" does not appear to exist, skipping...' %
                   argument)
             continue
         argument = os.path.abspath(os.path.relpath(argument))
         source_path = sanitize_source(argument)
-        if not args.dest:
+        if not dest_arg:
             parent, _ = os.path.split(source_path)
             dest_path = sanitize_dest(parent)
         else:
-            dest_path = args.dest
+            dest_path = dest_arg
         excludes = cfg.rsync_excludes if not args.no_excludes else []
-        for hostname in cfg.hosts:
+        for hostname in hosts:
             print('Transfering "%s" to "%s" on %s...' %
                   (source_path, dest_path, hostname))
             command = build_rsync_command(
                 source_path, dest_path, cfg.hosts[hostname], excludes,
-                args.erase, cfg.rsync_output_flags)
+                args.erase, cfg.rsync_output_flags, args.reverse)
             dprint('Running command: %s' % ' '.join(command))
             if not args.dry_run:
                 subprocess.call(command, stderr=subprocess.PIPE)
@@ -185,14 +239,29 @@ class CommandParser(object):
             '-D', '--dest', dest='dest', metavar="DESTINATION",
             help=("Specify an alternate destination path. Otherwise the "
                   "same source path is used on each host destination."))
+        self.arg_parser.add_argument(
+            '-r', '--reverse', dest='reverse', action='store_true',
+            help=('Reverse the transfer direction. Requires 1 host to be '
+                  'specified with the "--host" option.'))
+
+    def add_host_options(self):
+        self.arg_parser.add_argument(
+            '-H', '--host', dest='host', metavar='HOST',
+            help=('Interact with only a single host from the config file. '
+                  'Argument can be index of the host, or a substring '
+                  'matching the name in the config file.'))
+        self.arg_parser.add_argument(
+            '-l', '--list-hosts', dest='list_hosts', action='store_true',
+            help='List the hosts available in the config file.')
 
     def set_defaults(self):
-        self.arg_parser.set_defaults(dir=[os.environ.get('HOME', '')],
-                                     config=None, no_excludes=False,
-                                     erase=False, dry_run=False, dest=None)
+        self.arg_parser.set_defaults(dir=None, config=None, no_excludes=False,
+                                     erase=False, dry_run=False, dest=None,
+                                     host=None, list_hosts=False)
 
     def parse(self):
         self.add_options()
+        self.add_host_options()
         self.set_defaults()
         return self.arg_parser.parse_args()
 
