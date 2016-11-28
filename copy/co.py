@@ -104,6 +104,18 @@ class Config(object):
     def load(self):
         self._parser.read(self.filename)
 
+    def get_string(self, sect, opt):
+        if (not self._parser.has_section(sect)
+                or opt not in self._parser.options(sect)):
+            return None
+        return self._parser.get(sect, opt)
+
+    def get_list(self, sect, opt):
+        if (not self._parser.has_section(sect)
+                or opt not in self._parser.options(sect)):
+            return None
+        return self._parser.get(sect, opt).split(' ')
+
     @property
     def hosts(self):
         sect = 'hosts'
@@ -112,21 +124,37 @@ class Config(object):
         return {opt: self._parser.get(sect, opt)
                 for opt in self._parser.options(sect)}
 
+    def iter_hosts(self):
+        for index, hostname in enumerate(sorted(self.hosts.keys())):
+            yield (index, hostname)
+
     @property
     def rsync_excludes(self):
-        sect, opt = 'rsync_opts', 'excludes'
-        if (not self._parser.has_section(sect)
-                or opt not in self._parser.options(sect)):
-            return []
-        return self._parser.get(sect, opt).split(' ')
+        return self.get_list('rsync_opts', 'excludes')
 
     @property
     def rsync_output_flags(self):
-        sect, opt = 'rsync_opts', 'output_flags'
-        if (not self._parser.has_section(sect)
-                or opt not in self._parser.options(sect)):
-            return []
-        return self._parser.get(sect, opt).split(' ')
+        return self.get_list('rsync_opts', 'output_flags')
+
+    @property
+    def defaults_dir(self):
+        return self.get_string('defaults', 'dir')
+
+    @property
+    def defaults_dest(self):
+        return self.get_string('defaults', 'dest')
+
+    @property
+    def reverse_defaults_dir(self):
+        return self.get_string('reverse_defaults', 'dir')
+
+    @property
+    def reverse_defaults_dest(self):
+        return self.get_string('reverse_defaults', 'dest')
+
+    @property
+    def reverse_defaults_host(self):
+        return self.get_string('reverse_defaults', 'host')
 
 
 class CommandParser(object):
