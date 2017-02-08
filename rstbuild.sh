@@ -65,7 +65,7 @@ fi
 
 FILE_LIST=$(find $REPO -iname "*.$SUFFIX")
 RST_OPTS="${RST_OPTS} --stylesheet ${STYLESHEET}"
-MD5SUM=/usr/bin/md5sum
+SHASUM=/usr/bin/shasum
 BUILT=""
 
 html_suffix () {
@@ -78,13 +78,13 @@ md5_suffix () {
 
 checksum () {
     local sum=$(md5_suffix $1)
-    ${MD5SUM} $1 > $sum
+    ${SHASUM} $1 > $sum
 }
 
 build_page () {
     local sum=$(md5_suffix $1)
     if [ -f $sum ] ; then
-        ${MD5SUM} --check $sum &> /dev/null
+        ${SHASUM} --check $sum &> /dev/null
         if [ $? -eq  0 ] ; then
             return
         fi
