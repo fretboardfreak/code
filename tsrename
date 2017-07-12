@@ -33,7 +33,7 @@ function getFileCount {
     if [[ $? -ne 0 ]]; then
         echo "_0"
     else
-        echo "_`echo $list | wc -w`"
+        echo "_$(echo $list | wc -w | sed -e 's/[ \t]//g' -e 's/\/.*//g')"
     fi
 }
 
